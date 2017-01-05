@@ -7,7 +7,7 @@ import (
 )
 
 func TestServeHTTP(t *testing.T) {
-	r := New()
+	r := NewRouter()
 	http.Handle("/", r)
 	ts := httptest.NewServer(r)
 
