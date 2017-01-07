@@ -7,7 +7,10 @@ import (
 )
 
 func TestServeHTTP(t *testing.T) {
-	r := NewRouter()
+	r := New()
+	r.HandleFunc("/user", userHandler)
+	r.HandleFunc("/shop", shopHandler)
+	r.HandleFunc("/login", loginHandler)
 	http.Handle("/", r)
 	ts := httptest.NewServer(r)
 
@@ -16,3 +19,7 @@ func TestServeHTTP(t *testing.T) {
 		t.Errorf("want no error, got %v", err)
 	}
 }
+
+func userHandler()  {}
+func shopHandler()  {}
+func loginHandler() {}

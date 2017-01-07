@@ -17,16 +17,18 @@ Design
 */
 
 type Routing interface {
-	Lookup(string) RouteHandler
-	Construct([]*Route)
+	Lookup(string) (RouteHandler, error)
+	Construct([]*Route) error
 }
+
+var routing *Routing
 
 type Router struct {
 	NotFoundHandler http.Handler
 	routes          []*Route
 }
 
-func NewRouter() *Router {
+func New() *Router {
 	return &Router{
 		NotFoundHandler: http.NotFoundHandler(),
 	}
