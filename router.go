@@ -1,6 +1,9 @@
 package router
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+)
 
 /*
 Design
@@ -21,20 +24,31 @@ type Routing interface {
 	Construct([]*Route) error
 }
 
-var routing *Routing
-
 type Router struct {
 	NotFoundHandler http.Handler
 	routes          []*Route
+	routing         Routing
 }
 
 func New() *Router {
 	return &Router{
 		NotFoundHandler: http.NotFoundHandler(),
+		routing:         &Trie{},
 	}
 }
 
+func (r *Router) SetRouting(routing Routing) {
+	r.routing = routing
+}
+
+// Building routing tree
+func (r *Router) Construct() error {
+	return r.routing.Construct(r.routes)
+}
+
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	path := req.URL.Path
+	fmt.Fprintf(w, "Hello, world! %s", path)
 }
 
 func (r *Router) HandleFunc(path string, h RouteHandler) *Route {
