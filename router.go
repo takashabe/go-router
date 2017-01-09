@@ -1,8 +1,9 @@
 package router
 
 import (
-	"fmt"
+	"log"
 	"net/http"
+	"reflect"
 )
 
 /*
@@ -19,10 +20,19 @@ Design
 
 */
 
+const paramPrefix = ":"
+
 type Routing interface {
-	Lookup(string) (RouteHandler, error)
+	Lookup(string) (HandlerData, error)
 	Construct([]*Route) error
 }
+
+type HandlerData struct {
+	handler baseHandler
+	params  []interface{}
+}
+
+type baseHandler interface{}
 
 type Router struct {
 	NotFoundHandler http.Handler
@@ -47,11 +57,31 @@ func (r *Router) Construct() error {
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	path := req.URL.Path
-	fmt.Fprintf(w, "Hello, world! %s", path)
+	handler, err := r.routing.Lookup(req.URL.Path)
+	log.Println("handler=%v", handler)
+	if err != nil {
+		log.Printf(err.Error())
+		r.NotFoundHandler.ServeHTTP(w, req)
+		return
+	}
+
+	ref := reflect.ValueOf(handler)
+	if ref.Kind() != reflect.Func {
+		log.Println("Handler is must be Func. but handler kind:%v, path:%v", ref.Kind(), req.URL.Path)
+	}
+	// static args
+	args := []reflect.Value{
+		reflect.ValueOf(w),
+		reflect.ValueOf(req),
+	}
+	// choose dynamic args
+	for i := 2; i < reflect.TypeOf(handler).NumIn(); i++ {
+
+	}
+	ref.Call(args)
 }
 
-func (r *Router) HandleFunc(path string, h RouteHandler) *Route {
+func (r *Router) HandleFunc(path string, h baseHandler) *Route {
 	return r.AddRoute().HandleFunc(path, h)
 }
 
