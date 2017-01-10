@@ -9,6 +9,7 @@ import (
 
 type Trie struct {
 	Nodes []*Node
+	Root  map[string]*Node
 }
 
 type Node struct {
@@ -18,6 +19,9 @@ type Node struct {
 }
 
 type Data struct {
+	// tree node key
+	key string
+	// origin URL path
 	path    string
 	handler baseHandler
 }
@@ -37,25 +41,45 @@ func (t *Trie) Construct(routes []*Route) error {
 	for i, v := range routes {
 		pp.Printf("LOOP: #%d, %v\n", i, v)
 
-		if string(v.path[0]) != "m" {
-			return errors.New(fmt.Sprintf("invalid path. path must begin with '/'. path=%s\n", v.path))
+		if string(v.path[0]) != "/" {
+			return errors.New(fmt.Sprintf("invalid path. path must begin with '/'. path:%s\n", v.path))
+		}
+		parts := string.Split(v.path, "/")
+		for k, p := range parts {
 		}
 	}
 	return nil
 }
 
-func (t *Trie) DummyConstruct(routes []*Route) error {
-	for _, v := range routes {
-		data := Data{
-			path:    v.path,
-			handler: v.handler,
-		}
-		node := Node{
-			data:  data,
-			bros:  nil,
-			child: nil,
-		}
-		t.Nodes = append(t.Nodes, &node)
+func (t *Trie) insert(n Node) error {
+	dst, ok := t.Root["GET"]
+	if !ok {
+		t.Root["GET"] = &Node{}
+		dst = t.Root["GET"]
 	}
+
+	// traverse tree and find the insertion point of node
+}
+
+func (n *Node) getChild(key string) (Node, bool) {
+	if n.child == nil {
+		return nil, false
+	}
+
+	child := n.child
+	for {
+		if child.data.path == key {
+			return child, true
+		}
+		child = child.bros
+	}
+	return nil, true
+}
+
+func (n *Node) setChild(node Node) error {
+	if _, ok := n.getChild(node.data.path); ok {
+		return errors.New(fmt.Sprintf("already registered node. path:%s\n", node.data.path))
+	}
+	n.child = node
 	return nil
 }
