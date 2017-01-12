@@ -2,18 +2,18 @@ package router
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 )
 
 type Trie struct {
-	Nodes []*Node
-	Root  map[string]*Node
+	//	Nodes []*Node
+	Root map[string]*Node
 }
 
 type Node struct {
-	data  Data
+	data  *Data
 	bros  *Node
 	child *Node
 }
@@ -27,31 +27,14 @@ type Data struct {
 }
 
 func (t *Trie) Lookup(path string) (HandlerData, error) {
-	for _, v := range t.Nodes {
-		if v.data.path == path {
-			return HandlerData{handler: v.data.handler, params: nil}, nil
-		}
-	}
 	return HandlerData{}, errors.New(fmt.Sprintf("Not found path on tree,"))
 }
 
 func (t *Trie) Construct(routes []*Route) error {
-	t.Nodes = make([]*Node, len(routes))
-	pp.Printf("#1 t.Nodes: %v\n", t.Nodes)
-	for i, v := range routes {
-		pp.Printf("LOOP: #%d, %v\n", i, v)
-
-		if string(v.path[0]) != "/" {
-			return errors.New(fmt.Sprintf("invalid path. path must begin with '/'. path:%s\n", v.path))
-		}
-		parts := string.Split(v.path, "/")
-		for k, p := range parts {
-		}
-	}
 	return nil
 }
 
-func (t *Trie) insert(n Node) error {
+func (t *Trie) insert(path string, handler baseHandler) error {
 	dst, ok := t.Root["GET"]
 	if !ok {
 		t.Root["GET"] = &Node{}
@@ -59,27 +42,75 @@ func (t *Trie) insert(n Node) error {
 	}
 
 	// traverse tree and find the insertion point of node
+	parts := strings.Split(path, "/")
+	for i, part := range parts {
+		if dst.data.key == part {
+			continue
+		}
+		if child, ok := dst.getChild(part); ok {
+			dst = child
+			continue
+		}
+
+		data := Data{key: part}
+		if len(parts) == i-1 {
+			data.path = path
+			data.handler = handler
+		}
+		node := Node{
+			data:  &data,
+			bros:  nil,
+			child: nil,
+		}
+		dst.setChild(node)
+	}
+	return nil
 }
 
-func (n *Node) getChild(key string) (Node, bool) {
+func (n *Node) getChild(key string) (*Node, bool) {
 	if n.child == nil {
 		return nil, false
 	}
 
 	child := n.child
-	for {
-		if child.data.path == key {
-			return child, true
-		}
-		child = child.bros
+	if child.data.key == key {
+		return child, true
 	}
-	return nil, true
+	if bros, ok := child.getBros(key); ok {
+		return bros, true
+	}
+
+	return nil, false
+}
+
+func (n *Node) getBros(key string) (*Node, bool) {
+	if n.bros == nil {
+		return nil, false
+	}
+
+	bros := n.bros
+	if bros.data.key == key {
+		return bros, true
+	}
+	return bros.getBros(key)
 }
 
 func (n *Node) setChild(node Node) error {
 	if _, ok := n.getChild(node.data.path); ok {
 		return errors.New(fmt.Sprintf("already registered node. path:%s\n", node.data.path))
 	}
-	n.child = node
+
+	if n.child == nil {
+		n.child.getLastBros().bros = &node
+	} else {
+		n.child = &node
+	}
 	return nil
+}
+
+func (n *Node) getLastBros() *Node {
+	if n.bros == nil {
+		return n
+	}
+	return n.bros.getLastBros()
 }
