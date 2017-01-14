@@ -7,9 +7,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	ErrPathNotFound      = errors.New("path not found")
+	ErrInvalidPathFormat = errors.New("invalid path format")
+)
+
 type Trie struct {
 	//	Nodes []*Node
-	Root map[string]*Node
+	root map[string]*Node
 }
 
 type Node struct {
@@ -27,23 +32,35 @@ type Data struct {
 }
 
 func (t *Trie) Lookup(path string) (HandlerData, error) {
-	return HandlerData{}, errors.New(fmt.Sprintf("Not found path on tree,"))
+	return HandlerData{}, ErrPathNotFound
 }
 
 func (t *Trie) Construct(routes []*Route) error {
 	return nil
 }
 
+func (t *Trie) find(path string) (*Node, error) {
+	if string(path[0]) != "/" {
+		return nil, ErrInvalidPathFormat
+	}
+	return nil, ErrInvalidPathFormat
+}
+
 func (t *Trie) insert(path string, handler baseHandler) error {
-	dst, ok := t.Root["GET"]
+	if string(path[0]) != "/" {
+		return ErrPathNotFound
+	}
+
+	dst, ok := t.root["GET"]
 	if !ok {
-		t.Root["GET"] = &Node{}
-		dst = t.Root["GET"]
+		t.root["GET"] = &Node{data: &Data{key: "/"}}
+		dst = t.root["GET"]
 	}
 
 	// traverse tree and find the insertion point of node
 	parts := strings.Split(path, "/")
-	for i, part := range parts {
+	// loop exclude first "/"
+	for i, part := range parts[1:] {
 		if dst.data.key == part {
 			continue
 		}

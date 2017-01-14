@@ -1,8 +1,16 @@
 package router
 
-import "testing"
+import (
+	"testing"
 
-var fixtureMap map[string]*Node
+	"github.com/k0kubun/pp"
+)
+
+// dummy Trie
+var fixtureTrie Trie
+
+// registered tree nodes. expect access from test code
+var helperNodes map[string]*Node
 
 // fixture means sample URL list:
 //	"GET"
@@ -11,9 +19,7 @@ var fixtureMap map[string]*Node
 //		/user/:userID/follow
 //		/shop/:shopID/detail
 //		/shop/:shopID/:paymentID
-//
-//	return teadown func
-func setupFixture() func() {
+func setupFixture() {
 	// defined the sample URL in reverse order
 	shop3b := &Node{
 		data:  &Data{key: ":", path: "shop/:shopID/:paymentID", handler: func() {}},
@@ -63,26 +69,16 @@ func setupFixture() func() {
 		child: user1a,
 	}
 
-	// TODO: Trie.Rootの代わりをどうするか考える
-	get := &Node{
-		data:  &Data{key: "GET"},
-		bros:  nil,
-		child: root,
-	}
-
-	fixtureMap = map[string]*Node{
+	fixtureTrie = Trie{root: map[string]*Node{"GET": root}}
+	helperNodes = map[string]*Node{
 		"root":   root,
 		"user1a": user1a, "user2a": user2a, "user2b": user2b, "user3a": user3a,
 		"shop1a": shop1a, "shop2a": shop2a, "shop3a": shop3a, "shop3b": shop3b,
 	}
-
-	// expect restructure fixture
-	return func() { setupFixture() }
 }
 
 func TestGetBros(t *testing.T) {
-	teardown := setupFixture()
-	defer teardown()
+	setupFixture()
 
 	cases := []struct {
 		start      *Node
@@ -90,9 +86,9 @@ func TestGetBros(t *testing.T) {
 		expectNode *Node
 		expectBool bool
 	}{
-		{fixtureMap["user2a"], ":", fixtureMap["user2b"], true},
-		{fixtureMap["shop3a"], ":", fixtureMap["shop3b"], true},
-		{fixtureMap["shop2a"], "detail", nil, false},
+		{helperNodes["user2a"], ":", helperNodes["user2b"], true},
+		{helperNodes["shop3a"], ":", helperNodes["shop3b"], true},
+		{helperNodes["shop2a"], "detail", nil, false},
 	}
 	for i, c := range cases {
 		result, ok := c.start.getBros(c.input)
@@ -103,8 +99,7 @@ func TestGetBros(t *testing.T) {
 }
 
 func TestGetChild(t *testing.T) {
-	teardown := setupFixture()
-	defer teardown()
+	setupFixture()
 
 	cases := []struct {
 		start      *Node
@@ -112,9 +107,9 @@ func TestGetChild(t *testing.T) {
 		expectNode *Node
 		expectBool bool
 	}{
-		{fixtureMap["root"], "user", fixtureMap["user1a"], true},
-		{fixtureMap["root"], "none", nil, false},
-		{fixtureMap["root"], ":", nil, false},
+		{helperNodes["root"], "user", helperNodes["user1a"], true},
+		{helperNodes["root"], "none", nil, false},
+		{helperNodes["root"], ":", nil, false},
 	}
 	for i, c := range cases {
 		result, ok := c.start.getChild(c.input)
@@ -125,20 +120,49 @@ func TestGetChild(t *testing.T) {
 }
 
 func TestGetLastBros(t *testing.T) {
-	teardown := setupFixture()
-	defer teardown()
+	setupFixture()
 
 	cases := []struct {
 		start      *Node
 		expectNode *Node
 	}{
-		{fixtureMap["user1a"], fixtureMap["shop1a"]},
-		{fixtureMap["user3a"], fixtureMap["user3a"]},
+		{helperNodes["user1a"], helperNodes["shop1a"]},
+		{helperNodes["user3a"], helperNodes["user3a"]},
 	}
 	for i, c := range cases {
 		result := c.start.getLastBros()
 		if result != c.expectNode {
 			t.Errorf("#%d: want result:%#v, got result:%#v", i, c.expectNode, result)
+		}
+	}
+}
+
+func TestInsert(t *testing.T) {
+	setupFixture()
+
+	a := &fixtureTrie
+
+	b := *a
+	b.insert("/user/:id/:hoge", func() {})
+	pp.Println(a)
+	pp.Println(b)
+
+	cases := []struct {
+		input        string
+		expectResult error
+		// ポインタ使いすぎかも。メソッドの返り値とか。値型で良いところはもっとそうした方が良さそう
+		// でないとTrie全体の比較するのつらくなる
+		expectTree *Trie
+	}{
+		{"/user/:userID/:attrID", nil, nil},
+		// {"user/:userID/:attrID", ErrInvalidPathFormat, expectNode1},
+	}
+	for i, c := range cases {
+		result := fixtureTrie.insert(c.input, func() {})
+		// pp.Printf("#%d %v", i, fixtureTrie)
+		// pp.Printf("Origin=== %v", i, c.expectTree)
+		if result != c.expectResult {
+			t.Errorf("#%d: want result:%#v, got result:%#v", i, c.expectResult, result)
 		}
 	}
 }
