@@ -1,9 +1,8 @@
 package router
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/k0kubun/pp"
 )
 
 // dummy Trie
@@ -20,14 +19,18 @@ var helperNodes map[string]*Node
 //		/shop/:shopID/detail
 //		/shop/:shopID/:paymentID
 func setupFixture() {
+	fixtureTrie, helperNodes = generateFixture()
+}
+
+func generateFixture() (Trie, map[string]*Node) {
 	// defined the sample URL in reverse order
 	shop3b := &Node{
-		data:  &Data{key: ":", path: "shop/:shopID/:paymentID", handler: func() {}},
+		data:  &Data{key: ":", path: "shop/:shopID/:paymentID", handler: nil},
 		bros:  nil,
 		child: nil,
 	}
 	shop3a := &Node{
-		data:  &Data{key: "detail", path: "shop/:shopID/detail", handler: func() {}},
+		data:  &Data{key: "detail", path: "shop/:shopID/detail", handler: nil},
 		bros:  shop3b,
 		child: nil,
 	}
@@ -43,17 +46,17 @@ func setupFixture() {
 	}
 
 	user3a := &Node{
-		data:  &Data{key: "follow", path: "/user/:userID/follow", handler: func() {}},
+		data:  &Data{key: "follow", path: "/user/:userID/follow", handler: nil},
 		bros:  nil,
 		child: nil,
 	}
 	user2b := &Node{
-		data:  &Data{key: ":", path: "/user/:userID", handler: func() {}},
+		data:  &Data{key: ":", path: "/user/:userID", handler: nil},
 		bros:  nil,
 		child: user3a,
 	}
 	user2a := &Node{
-		data:  &Data{key: "list", path: "/user/list", handler: func() {}},
+		data:  &Data{key: "list", path: "/user/list", handler: nil},
 		bros:  user2b,
 		child: nil,
 	}
@@ -69,12 +72,13 @@ func setupFixture() {
 		child: user1a,
 	}
 
-	fixtureTrie = Trie{root: map[string]*Node{"GET": root}}
-	helperNodes = map[string]*Node{
+	trie := Trie{root: map[string]*Node{"GET": root}}
+	nodes := map[string]*Node{
 		"root":   root,
 		"user1a": user1a, "user2a": user2a, "user2b": user2b, "user3a": user3a,
 		"shop1a": shop1a, "shop2a": shop2a, "shop3a": shop3a, "shop3b": shop3b,
 	}
+	return trie, nodes
 }
 
 func TestGetBros(t *testing.T) {
@@ -140,29 +144,28 @@ func TestGetLastBros(t *testing.T) {
 func TestInsert(t *testing.T) {
 	setupFixture()
 
-	a := &fixtureTrie
-
-	b := *a
-	b.insert("/user/:id/:hoge", func() {})
-	pp.Println(a)
-	pp.Println(b)
+	expectTrie1, nodes := generateFixture()
+	nodes["user3a"].bros = &Node{data: &Data{key: ":", path: "/user/:userID/:attrID", handler: nil}}
 
 	cases := []struct {
 		input        string
 		expectResult error
-		// ポインタ使いすぎかも。メソッドの返り値とか。値型で良いところはもっとそうした方が良さそう
-		// でないとTrie全体の比較するのつらくなる
-		expectTree *Trie
+		expectTree   Trie
 	}{
-		{"/user/:userID/:attrID", nil, nil},
+		{"/user/:userID/:attrID", nil, expectTrie1},
 		// {"user/:userID/:attrID", ErrInvalidPathFormat, expectNode1},
 	}
 	for i, c := range cases {
-		result := fixtureTrie.insert(c.input, func() {})
-		// pp.Printf("#%d %v", i, fixtureTrie)
-		// pp.Printf("Origin=== %v", i, c.expectTree)
+		result := fixtureTrie.insert(c.input, nil)
 		if result != c.expectResult {
 			t.Errorf("#%d: want result:%#v, got result:%#v", i, c.expectResult, result)
+		}
+
+		if !reflect.DeepEqual(c.expectTree, fixtureTrie) {
+			t.Errorf("#%d: want tree:%#v, got tree:%#v", i, c.expectTree, fixtureTrie)
+			// log.Println(pretty.Compare(fixtureTrie, c.expectTree))
+			// pp.Println(fixtureTrie)
+			// pp.Println(c.expectTree)
 		}
 	}
 }
