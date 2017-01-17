@@ -141,7 +141,41 @@ func TestGetLastBros(t *testing.T) {
 	}
 }
 
-func TestInsert(t *testing.T) {
+func TestSetChild(t *testing.T) {
+	expectTrie1, nodes1 := generateFixture()
+	inputNode1 := Node{data: &Data{key: ":", path: "/user/:userID/:attrID", handler: nil}}
+	nodes1["user3a"].bros = &inputNode1
+
+	expectTrie2, nodes2 := generateFixture()
+	inputNode2 := Node{data: &Data{key: ":", path: "/shop/:shopID/:paymentID/:dummyID", handler: nil}}
+	nodes2["shop3b"].bros = &inputNode2
+
+	expectTrie3, _ := generateFixture()
+	inputNode3 := Node{data: &Data{key: ":", path: "/user/:userID", handler: nil}}
+
+	cases := []struct {
+		start       string
+		input       Node
+		expectError error
+		expectTree  Trie
+	}{
+		{"user3a", inputNode1, nil, expectTrie1},
+		{"shop3a", inputNode2, nil, expectTrie2},
+		{"user1a", inputNode3, ErrAlreadyPathRegistered, expectTrie3},
+	}
+	for i, c := range cases {
+		setupFixture()
+		_, err := helperNodes[c.start].setChild(c.input)
+		if err != c.expectError {
+			t.Errorf("#%d: want error:%v, got error:%v", i, c.expectError, err)
+		}
+		if !reflect.DeepEqual(c.expectTree, fixtureTrie) {
+			t.Errorf("#%d: want tree:%#v, got tree:%#v", i, c.expectTree, fixtureTrie)
+		}
+	}
+}
+
+func _TestInsert(t *testing.T) {
 	setupFixture()
 
 	expectTrie1, nodes := generateFixture()
