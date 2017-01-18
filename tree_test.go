@@ -3,6 +3,8 @@ package router
 import (
 	"reflect"
 	"testing"
+
+	"github.com/k0kubun/pp"
 )
 
 // dummy Trie
@@ -25,12 +27,12 @@ func setupFixture() {
 func generateFixture() (Trie, map[string]*Node) {
 	// defined the sample URL in reverse order
 	shop3b := &Node{
-		data:  &Data{key: ":", path: "shop/:shopID/:paymentID", handler: nil},
+		data:  &Data{key: ":", path: "/shop/:shopID/:paymentID", handler: nil},
 		bros:  nil,
 		child: nil,
 	}
 	shop3a := &Node{
-		data:  &Data{key: "detail", path: "shop/:shopID/detail", handler: nil},
+		data:  &Data{key: "detail", path: "/shop/:shopID/detail", handler: nil},
 		bros:  shop3b,
 		child: nil,
 	}
@@ -175,6 +177,29 @@ func TestSetChild(t *testing.T) {
 	}
 }
 
+func TestFind(t *testing.T) {
+	setupFixture()
+
+	cases := []struct {
+		input       string
+		expectNode  *Node
+		expectError error
+	}{
+		{"/user/:userID/follow", helperNodes["user3a"], nil},
+		{"/user/:userID/follow/none", nil, ErrPathNotFound},
+		{"/shop/:shopID/detail", helperNodes["shop3a"], nil},
+	}
+	for i, c := range cases {
+		result, err := fixtureTrie.find(c.input, "GET")
+		if result != c.expectNode {
+			t.Errorf("#%d: want result:%#v , got result:%#v ", i, c.expectNode, result)
+		}
+		if err != c.expectError {
+			t.Errorf("#%d: want error:%#v , got error:%#v ", i, c.expectError, err)
+		}
+	}
+}
+
 func _TestInsert(t *testing.T) {
 	setupFixture()
 
@@ -198,8 +223,8 @@ func _TestInsert(t *testing.T) {
 		if !reflect.DeepEqual(c.expectTree, fixtureTrie) {
 			t.Errorf("#%d: want tree:%#v, got tree:%#v", i, c.expectTree, fixtureTrie)
 			// log.Println(pretty.Compare(fixtureTrie, c.expectTree))
-			// pp.Println(fixtureTrie)
 			// pp.Println(c.expectTree)
+			pp.Println(fixtureTrie)
 		}
 	}
 }

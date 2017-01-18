@@ -39,11 +39,30 @@ func (t *Trie) Construct(routes []*Route) error {
 	return nil
 }
 
-func (t *Trie) find(path string) (*Node, error) {
+func (t *Trie) find(path string, method string) (*Node, error) {
 	if string(path[0]) != "/" {
 		return nil, ErrInvalidPathFormat
 	}
-	return nil, ErrInvalidPathFormat
+	dst, ok := t.root[method]
+	if !ok {
+		return nil, ErrPathNotFound
+	}
+
+	parts := strings.Split(path, "/")
+	parts[0] = "/"
+	for _, p := range parts {
+		if string(p[0]) == ":" {
+			p = ":"
+		}
+		if n, ok := dst.getChild(p); ok {
+			dst = n
+		}
+		if dst.data.path == path {
+			return dst, nil
+		}
+	}
+
+	return nil, ErrPathNotFound
 }
 
 func (t *Trie) insert(path string, handler baseHandler) error {
@@ -62,18 +81,22 @@ func (t *Trie) insert(path string, handler baseHandler) error {
 	for i, part := range parts {
 		log.Printf("#%v dst=%s, part=%s\n", i, dst.data.key, part)
 		if len(part) == 0 {
+			log.Println("len==0")
 			continue
 		}
 		if dst.data.key == part {
+			log.Println("key==part")
 			continue
-		}
-		if child, ok := dst.getChild(part); ok {
-			dst = child
 		}
 
 		// param path
 		if string(part[0]) == ":" {
 			part = string(part[0])
+		}
+		if child, ok := dst.getChild(part); ok {
+			dst = child
+			log.Println("getChild()==ok")
+			continue
 		}
 		data := Data{key: part}
 
@@ -88,6 +111,7 @@ func (t *Trie) insert(path string, handler baseHandler) error {
 			child: nil,
 		}
 		dst.setChild(node)
+		log.Printf("#%v dst=%s, part=%s insert!\n", i, dst.data.key, part)
 	}
 	return nil
 }
