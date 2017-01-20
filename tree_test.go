@@ -157,6 +157,7 @@ func TestGetChildParam(t *testing.T) {
 		{helperNodes["shop1a"], helperNodes["shop2a"], true},
 		{helperNodes["shop2a"], helperNodes["shop3b"], true},
 		{helperNodes["root"], nil, false},
+		{helperNodes["shop3b"], nil, false},
 	}
 	for i, c := range cases {
 		result, ok := c.start.getChildParam()
@@ -220,15 +221,33 @@ func TestSetChild(t *testing.T) {
 
 func TestPathEqual(t *testing.T) {
 	cases := []struct {
-		base    string
-		compare string
-		expect  bool
+		baseNode *Node
+		input    string
+		expect   bool
 	}{
-		{"/user/:userID/follow", "/user/10/follow", true},
-		{"/user/:userID/follow", "/user/10/follow/10", false},
+		{
+			&Node{data: &Data{path: "/user/:userID/follow"}},
+			"/user/10/follow/",
+			true,
+		},
+		{
+			&Node{data: &Data{path: "/user/:userID/follow"}},
+			"user/10/follow/",
+			false,
+		},
+		{
+			&Node{data: &Data{path: "/user/:userID/follow"}},
+			"/user/10/follow/10",
+			false,
+		},
+		{
+			&Node{data: &Data{path: "/user/:userID/follow"}},
+			"/user/10/dummy/",
+			false,
+		},
 	}
 	for i, c := range cases {
-		result := pathEqual(c.base, c.compare)
+		result := c.baseNode.pathEqual(c.input)
 		if result != c.expect {
 			t.Errorf("#%d: want:%#v , got:%#v ", i, c.expect, result)
 		}
@@ -331,6 +350,79 @@ func TestConstruct(t *testing.T) {
 		}
 		if !reflect.DeepEqual(c.expectTree, trie) {
 			t.Errorf("#%d: want result:%#v , got result:%#v ", i, c.expectTree, trie)
+		}
+	}
+}
+
+func TestExportParam(t *testing.T) {
+	cases := []struct {
+		baseNode *Node
+		input    string
+		expect   []interface{}
+	}{
+		{
+			&Node{data: &Data{path: "/user/:userID/follow/:attrID"}},
+			"/user/10/follow/20/",
+			[]interface{}{"10", "20"},
+		},
+		{
+			&Node{data: &Data{path: "/user/list"}},
+			"/user/list",
+			[]interface{}{},
+		},
+		{
+			&Node{data: &Data{path: "/user/:userID/follow"}},
+			"/user/10/follow/10",
+			[]interface{}{},
+		},
+		{
+			&Node{data: &Data{path: "/user/:userID/follow"}},
+			"user/10/follow/10",
+			[]interface{}{},
+		},
+		{
+			&Node{data: &Data{}},
+			"/user/10/follow/10",
+			[]interface{}{},
+		},
+	}
+	for i, c := range cases {
+		result := c.baseNode.exportParam(c.input)
+		if !reflect.DeepEqual(result, c.expect) {
+			t.Errorf("#%d: want:%#v , got:%#v ", i, c.expect, result)
+		}
+	}
+}
+
+func TestLookup(t *testing.T) {
+	setupFixture()
+
+	cases := []struct {
+		inputPath   string
+		inputMethod string
+		expectData  HandlerData
+		expectError error
+	}{
+		{
+			"/shop/10/20/",
+			"GET",
+			HandlerData{handler: nil, params: []interface{}{"10", "20"}},
+			nil,
+		},
+		{
+			"/shop/10/20/30/",
+			"GET",
+			HandlerData{},
+			ErrPathNotFound,
+		},
+	}
+	for i, c := range cases {
+		result, err := fixtureTrie.Lookup(c.inputPath, c.inputMethod)
+		if errors.Cause(err) != c.expectError {
+			t.Errorf("#%d: want error:%#v , got error:%#v ", i, c.expectError, err)
+		}
+		if !reflect.DeepEqual(result, c.expectData) {
+			t.Errorf("#%d: want result:%#v , got result:%#v ", i, c.expectData, result)
 		}
 	}
 }

@@ -36,17 +36,14 @@ func NewTrie() Trie {
 }
 
 func (t *Trie) Lookup(path string, method string) (HandlerData, error) {
-	return HandlerData{}, ErrPathNotFound
-}
-
-func (t *Trie) Construct(routes []*Route) error {
-	for _, r := range routes {
-		err := t.insert(r.path, r.method, r.handler)
-		if err != nil {
-			return errors.Wrap(err, "failed construct tree")
-		}
+	n, err := t.find(path, method)
+	if err != nil {
+		return HandlerData{}, errors.Wrapf(err, "failed lookup. path=%s method=%s", path, method)
 	}
-	return nil
+	return HandlerData{
+		handler: n.data.handler,
+		params:  n.exportParam(path),
+	}, nil
 }
 
 func (t *Trie) find(path string, method string) (*Node, error) {
@@ -67,7 +64,7 @@ func (t *Trie) find(path string, method string) (*Node, error) {
 		if n, ok := dst.getChild(p); ok {
 			dst = n
 		}
-		if pathEqual(dst.data.path, path) {
+		if dst.pathEqual(path) {
 			return dst, nil
 		}
 	}
@@ -75,22 +72,14 @@ func (t *Trie) find(path string, method string) (*Node, error) {
 	return nil, ErrPathNotFound
 }
 
-func pathEqual(base, compare string) bool {
-	a := strings.Split(base, "/")
-	b := strings.Split(compare, "/")
-	if len(a) != len(b) {
-		return false
-	}
-	for i, v := range a {
-		// param symbol is match any
-		if v != "" && string(v[0]) == ":" {
-			continue
-		}
-		if v != string(b[i]) {
-			return false
+func (t *Trie) Construct(routes []*Route) error {
+	for _, r := range routes {
+		err := t.insert(r.path, r.method, r.handler)
+		if err != nil {
+			return errors.Wrap(err, "failed construct tree")
 		}
 	}
-	return true
+	return nil
 }
 
 func (t *Trie) insert(path, method string, handler baseHandler) error {
@@ -125,7 +114,7 @@ func (t *Trie) insert(path, method string, handler baseHandler) error {
 		}
 		dst, err = dst.setChild(Node{data: &data})
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed insert. path=%s, method=%s", path, method)
 		}
 	}
 	return nil
@@ -142,10 +131,14 @@ func validatePath(s string) (string, error) {
 }
 
 func convertParamKey(s string) string {
-	if string(s[0]) == ":" {
+	if isParamKey(s) {
 		return ":"
 	}
 	return s
+}
+
+func isParamKey(s string) bool {
+	return string(s[0]) == ":"
 }
 
 func (n *Node) getChild(key string) (*Node, bool) {
@@ -176,7 +169,7 @@ func (n *Node) getChildParam() (*Node, bool) {
 	}
 
 	child := n.child
-	if child.data.key == ":" {
+	if isParamKey(child.data.key) {
 		return child, true
 	}
 	if bros, ok := child.getBrosParam(); ok {
@@ -203,7 +196,7 @@ func (n *Node) getBrosParam() (*Node, bool) {
 	}
 
 	bros := n.bros
-	if bros.data.key == ":" {
+	if isParamKey(bros.data.key) {
 		return bros, true
 	}
 	return bros.getBrosParam()
@@ -227,4 +220,54 @@ func (n *Node) getLastBros() *Node {
 		return n
 	}
 	return n.bros.getLastBros()
+}
+
+func (n *Node) pathEqual(path string) bool {
+	if len(n.data.path) == 0 {
+		return false
+	}
+	path, err := validatePath(path)
+	if err != nil {
+		return false
+	}
+
+	a := strings.Split(n.data.path, "/")
+	b := strings.Split(path, "/")
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		// param symbol is match any
+		if len(v) != 0 && isParamKey(v) {
+			continue
+		}
+		if v != string(b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (n *Node) exportParam(path string) []interface{} {
+	p := []interface{}{}
+	if len(n.data.path) == 0 {
+		return p
+	}
+	path, err := validatePath(path)
+	if err != nil {
+		return p
+	}
+
+	a := strings.Split(n.data.path, "/")
+	b := strings.Split(path, "/")
+	if len(a) != len(b) {
+		return p
+	}
+
+	for i, v := range a {
+		if len(v) != 0 && isParamKey(v) {
+			p = append(p, b[i])
+		}
+	}
+	return p
 }
