@@ -39,16 +39,19 @@ func (t *Trie) Construct(routes []*Route) error {
 }
 
 func (t *Trie) find(path string, method string) (*Node, error) {
-	if string(path[0]) != "/" {
-		return nil, ErrInvalidPathFormat
+	path, err := validatePath(path)
+	if err != nil {
+		return nil, err
 	}
+
 	dst, ok := t.root[method]
 	if !ok {
 		return nil, ErrPathNotFound
 	}
 
 	parts := strings.Split(path, "/")
-	parts[0] = "/"
+	// exclude "/"
+	parts = parts[1:]
 	for _, p := range parts {
 		p = convertParamKey(p)
 		if n, ok := dst.getChild(p); ok {
@@ -63,9 +66,11 @@ func (t *Trie) find(path string, method string) (*Node, error) {
 }
 
 func (t *Trie) insert(path, method string, handler baseHandler) error {
-	if string(path[0]) != "/" {
-		return ErrInvalidPathFormat
+	path, err := validatePath(path)
+	if err != nil {
+		return err
 	}
+
 	dst, ok := t.root[method]
 	if !ok {
 		t.root[method] = &Node{data: &Data{key: "/"}}
@@ -73,15 +78,20 @@ func (t *Trie) insert(path, method string, handler baseHandler) error {
 	}
 
 	parts := strings.Split(path, "/")
-	for i, p := range parts[1:] {
+	// exclude "/"
+	parts = parts[1:]
+	for i, p := range parts {
 		p = convertParamKey(p)
 		if n, ok := dst.getChild(p); ok {
+			if len(parts)-1 == i {
+				return ErrAlreadyPathRegistered
+			}
 			dst = n
 			continue
 		}
 		data := Data{key: p}
 		// leaf node
-		if len(parts)-2 == i {
+		if len(parts)-1 == i {
 			data.path = path
 			data.handler = handler
 		}
@@ -91,6 +101,16 @@ func (t *Trie) insert(path, method string, handler baseHandler) error {
 		}
 	}
 	return nil
+}
+
+func validatePath(s string) (string, error) {
+	if string(s[0]) != "/" {
+		return "", ErrInvalidPathFormat
+	}
+	if string(s[len(s)-1]) == "/" {
+		return s[:len(s)-1], nil
+	}
+	return s, nil
 }
 
 func convertParamKey(s string) string {

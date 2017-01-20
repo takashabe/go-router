@@ -179,16 +179,19 @@ func TestFind(t *testing.T) {
 	setupFixture()
 
 	cases := []struct {
-		input       string
+		inputPath   string
+		inputMethod string
 		expectNode  *Node
 		expectError error
 	}{
-		{"/user/:userID/follow", helperNodes["user3a"], nil},
-		{"/user/:userID/follow/none", nil, ErrPathNotFound},
-		{"/shop/:shopID/detail", helperNodes["shop3a"], nil},
+		{"/user/:userID/follow", "GET", helperNodes["user3a"], nil},
+		{"/user/:userID/follow/none", "GET", nil, ErrPathNotFound},
+		{"/shop/:shopID/detail/", "GET", helperNodes["shop3a"], nil},
+		{"/shop/:shopID/detail", "POST", nil, ErrPathNotFound},
+		{"shop/:shopID/detail", "GET", nil, ErrInvalidPathFormat},
 	}
 	for i, c := range cases {
-		result, err := fixtureTrie.find(c.input, "GET")
+		result, err := fixtureTrie.find(c.inputPath, c.inputMethod)
 		if err != c.expectError {
 			t.Errorf("#%d: want error:%#v , got error:%#v ", i, c.expectError, err)
 		}
@@ -212,6 +215,8 @@ func TestInsert(t *testing.T) {
 	}
 	expectTrie3.root["POST"] = node3
 
+	expectTrie, _ := generateFixture()
+
 	cases := []struct {
 		inputPath    string
 		inputMethod  string
@@ -221,6 +226,8 @@ func TestInsert(t *testing.T) {
 		{"/user/:userID/dummy", "GET", nil, expectTrie1},
 		{"/shop/:shopID/:paymentID/:dummyID", "GET", nil, expectTrie2},
 		{"/post", "POST", nil, expectTrie3},
+		{"/user/:userID", "GET", ErrAlreadyPathRegistered, expectTrie},
+		{"user", "GET", ErrInvalidPathFormat, expectTrie},
 	}
 	for i, c := range cases {
 		setupFixture()
