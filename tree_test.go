@@ -340,7 +340,7 @@ func TestConstruct(t *testing.T) {
 		expectTree  Trie
 	}{
 		{input1, nil, fixtureTrie},
-		{input2, ErrInvalidPathFormat, NewTrie()},
+		{input2, ErrInvalidPathFormat, *NewTrie()},
 	}
 	for i, c := range cases {
 		trie := NewTrie()

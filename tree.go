@@ -30,9 +30,9 @@ type Data struct {
 	handler baseHandler
 }
 
-func NewTrie() Trie {
+func NewTrie() *Trie {
 	// cap num refers to: net/http/method.go
-	return Trie{root: make(map[string]*Node, 9)}
+	return &Trie{root: make(map[string]*Node, 9)}
 }
 
 func (t *Trie) Lookup(path string, method string) (HandlerData, error) {
