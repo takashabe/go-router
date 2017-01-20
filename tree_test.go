@@ -245,9 +245,9 @@ func TestFind(t *testing.T) {
 		expectError error
 	}{
 		{"/user/1/follow", "GET", helperNodes["user3a"], nil},
-		{"/user/:userID/follow/none", "GET", nil, ErrPathNotFound},
-		{"/shop/:shopID/detail", "POST", nil, ErrPathNotFound},
-		{"shop/:shopID/detail", "GET", nil, ErrInvalidPathFormat},
+		{"/user/1/follow/none", "GET", nil, ErrPathNotFound},
+		{"/shop/1/detail", "POST", nil, ErrPathNotFound},
+		{"shop/1/detail", "GET", nil, ErrInvalidPathFormat},
 	}
 	for i, c := range cases {
 		result, err := fixtureTrie.find(c.inputPath, c.inputMethod)
