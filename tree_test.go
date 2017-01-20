@@ -3,6 +3,8 @@ package router
 import (
 	"reflect"
 	"testing"
+
+	"github.com/pkg/errors"
 )
 
 // dummy Trie
@@ -252,23 +254,26 @@ func TestConstruct(t *testing.T) {
 		&Route{path: "/shop/:shopID/:paymentID", method: "GET"},
 	}
 
+	input2 := []*Route{
+		&Route{path: "user/list", method: "GET"},
+	}
+
 	cases := []struct {
 		input       []*Route
 		expectError error
 		expectTree  Trie
 	}{
 		{input1, nil, fixtureTrie},
+		{input2, ErrInvalidPathFormat, NewTrie()},
 	}
 	for i, c := range cases {
 		trie := NewTrie()
 		err := trie.Construct(c.input)
-		if err != c.expectError {
+		if errors.Cause(err) != c.expectError {
 			t.Errorf("#%d: want error:%#v , got error:%#v ", i, c.expectError, err)
 		}
 		if !reflect.DeepEqual(c.expectTree, trie) {
 			t.Errorf("#%d: want result:%#v , got result:%#v ", i, c.expectTree, trie)
-			// pp.Println(trie)
-			// pp.Println(fixtureTrie)
 		}
 	}
 }
