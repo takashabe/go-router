@@ -64,16 +64,33 @@ func (t *Trie) find(path string, method string) (*Node, error) {
 	// exclude "/"
 	parts = parts[1:]
 	for _, p := range parts {
-		p = convertParamKey(p)
 		if n, ok := dst.getChild(p); ok {
 			dst = n
 		}
-		if dst.data.path == path {
+		if pathEqual(dst.data.path, path) {
 			return dst, nil
 		}
 	}
 
 	return nil, ErrPathNotFound
+}
+
+func pathEqual(base, compare string) bool {
+	a := strings.Split(base, "/")
+	b := strings.Split(compare, "/")
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		// param symbol is match any
+		if v != "" && string(v[0]) == ":" {
+			continue
+		}
+		if v != string(b[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (t *Trie) insert(path, method string, handler baseHandler) error {
@@ -136,6 +153,7 @@ func (n *Node) getChild(key string) (*Node, bool) {
 		return nil, false
 	}
 
+	// search match key node
 	child := n.child
 	if child.data.key == key {
 		return child, true
@@ -144,6 +162,26 @@ func (n *Node) getChild(key string) (*Node, bool) {
 		return bros, true
 	}
 
+	// search param node
+	if childParam, ok := n.getChildParam(); ok {
+		return childParam, true
+	}
+
+	return nil, false
+}
+
+func (n *Node) getChildParam() (*Node, bool) {
+	if n.child == nil {
+		return nil, false
+	}
+
+	child := n.child
+	if child.data.key == ":" {
+		return child, true
+	}
+	if bros, ok := child.getBrosParam(); ok {
+		return bros, true
+	}
 	return nil, false
 }
 
@@ -157,6 +195,18 @@ func (n *Node) getBros(key string) (*Node, bool) {
 		return bros, true
 	}
 	return bros.getBros(key)
+}
+
+func (n *Node) getBrosParam() (*Node, bool) {
+	if n.bros == nil {
+		return nil, false
+	}
+
+	bros := n.bros
+	if bros.data.key == ":" {
+		return bros, true
+	}
+	return bros.getBrosParam()
 }
 
 func (n *Node) setChild(node Node) (*Node, error) {

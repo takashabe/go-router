@@ -116,9 +116,50 @@ func TestGetChild(t *testing.T) {
 		{helperNodes["root"], "user", helperNodes["user1a"], true},
 		{helperNodes["root"], "none", nil, false},
 		{helperNodes["root"], ":", nil, false},
+		{helperNodes["user1a"], "10", helperNodes["user2b"], true},
 	}
 	for i, c := range cases {
 		result, ok := c.start.getChild(c.input)
+		if !reflect.DeepEqual(result, c.expectNode) || c.expectBool != ok {
+			t.Errorf("#%d: want result:%#v ok:%t, got result:%#v ok:%t", i, c.expectNode, c.expectBool, result, ok)
+		}
+	}
+}
+
+func TestGetBrosParam(t *testing.T) {
+	setupFixture()
+
+	cases := []struct {
+		start      *Node
+		expectNode *Node
+		expectBool bool
+	}{
+		{helperNodes["user2a"], helperNodes["user2b"], true},
+		{helperNodes["shop3a"], helperNodes["shop3b"], true},
+		{helperNodes["shop2a"], nil, false},
+	}
+	for i, c := range cases {
+		result, ok := c.start.getBrosParam()
+		if !reflect.DeepEqual(result, c.expectNode) || c.expectBool != ok {
+			t.Errorf("#%d: want result:%#v ok:%t, got result:%#v ok:%t", i, c.expectNode, c.expectBool, result, ok)
+		}
+	}
+}
+
+func TestGetChildParam(t *testing.T) {
+	setupFixture()
+
+	cases := []struct {
+		start      *Node
+		expectNode *Node
+		expectBool bool
+	}{
+		{helperNodes["shop1a"], helperNodes["shop2a"], true},
+		{helperNodes["shop2a"], helperNodes["shop3b"], true},
+		{helperNodes["root"], nil, false},
+	}
+	for i, c := range cases {
+		result, ok := c.start.getChildParam()
 		if !reflect.DeepEqual(result, c.expectNode) || c.expectBool != ok {
 			t.Errorf("#%d: want result:%#v ok:%t, got result:%#v ok:%t", i, c.expectNode, c.expectBool, result, ok)
 		}
@@ -177,6 +218,23 @@ func TestSetChild(t *testing.T) {
 	}
 }
 
+func TestPathEqual(t *testing.T) {
+	cases := []struct {
+		base    string
+		compare string
+		expect  bool
+	}{
+		{"/user/:userID/follow", "/user/10/follow", true},
+		{"/user/:userID/follow", "/user/10/follow/10", false},
+	}
+	for i, c := range cases {
+		result := pathEqual(c.base, c.compare)
+		if result != c.expect {
+			t.Errorf("#%d: want:%#v , got:%#v ", i, c.expect, result)
+		}
+	}
+}
+
 func TestFind(t *testing.T) {
 	setupFixture()
 
@@ -186,9 +244,8 @@ func TestFind(t *testing.T) {
 		expectNode  *Node
 		expectError error
 	}{
-		{"/user/:userID/follow", "GET", helperNodes["user3a"], nil},
+		{"/user/1/follow", "GET", helperNodes["user3a"], nil},
 		{"/user/:userID/follow/none", "GET", nil, ErrPathNotFound},
-		{"/shop/:shopID/detail/", "GET", helperNodes["shop3a"], nil},
 		{"/shop/:shopID/detail", "POST", nil, ErrPathNotFound},
 		{"shop/:shopID/detail", "GET", nil, ErrInvalidPathFormat},
 	}
