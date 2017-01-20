@@ -1,7 +1,6 @@
 package router
 
 import (
-	"log"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -51,9 +50,7 @@ func (t *Trie) find(path string, method string) (*Node, error) {
 	parts := strings.Split(path, "/")
 	parts[0] = "/"
 	for _, p := range parts {
-		if string(p[0]) == ":" {
-			p = ":"
-		}
+		p = convertParamKey(p)
 		if n, ok := dst.getChild(p); ok {
 			dst = n
 		}
@@ -65,55 +62,42 @@ func (t *Trie) find(path string, method string) (*Node, error) {
 	return nil, ErrPathNotFound
 }
 
-func (t *Trie) insert(path string, handler baseHandler) error {
+func (t *Trie) insert(path, method string, handler baseHandler) error {
 	if string(path[0]) != "/" {
-		return ErrPathNotFound
+		return ErrInvalidPathFormat
 	}
-
-	dst, ok := t.root["GET"]
+	dst, ok := t.root[method]
 	if !ok {
-		t.root["GET"] = &Node{data: &Data{key: "/"}}
-		dst = t.root["GET"]
+		t.root[method] = &Node{data: &Data{key: "/"}}
+		dst = t.root[method]
 	}
 
-	// traverse tree and find the insertion point of node
 	parts := strings.Split(path, "/")
-	for i, part := range parts {
-		log.Printf("#%v dst=%s, part=%s\n", i, dst.data.key, part)
-		if len(part) == 0 {
-			log.Println("len==0")
+	for i, p := range parts[1:] {
+		p = convertParamKey(p)
+		if n, ok := dst.getChild(p); ok {
+			dst = n
 			continue
 		}
-		if dst.data.key == part {
-			log.Println("key==part")
-			continue
-		}
-
-		// param path
-		if string(part[0]) == ":" {
-			part = string(part[0])
-		}
-		if child, ok := dst.getChild(part); ok {
-			dst = child
-			log.Println("getChild()==ok")
-			continue
-		}
-		data := Data{key: part}
-
-		// if Leaf node, add params
-		if len(parts) == i-1 {
+		data := Data{key: p}
+		// leaf node
+		if len(parts)-2 == i {
 			data.path = path
 			data.handler = handler
 		}
-		node := Node{
-			data:  &data,
-			bros:  nil,
-			child: nil,
+		_, err := dst.setChild(Node{data: &data})
+		if err != nil {
+			return err
 		}
-		dst.setChild(node)
-		log.Printf("#%v dst=%s, part=%s insert!\n", i, dst.data.key, part)
 	}
 	return nil
+}
+
+func convertParamKey(s string) string {
+	if string(s[0]) == ":" {
+		return ":"
+	}
+	return s
 }
 
 func (n *Node) getChild(key string) (*Node, bool) {
@@ -150,9 +134,9 @@ func (n *Node) setChild(node Node) (*Node, error) {
 	}
 
 	if n.child == nil {
-		n.getLastBros().bros = &node
-	} else {
 		n.child = &node
+	} else {
+		n.child.getLastBros().bros = &node
 	}
 	return &node, nil
 }

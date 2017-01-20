@@ -3,8 +3,6 @@ package router
 import (
 	"reflect"
 	"testing"
-
-	"github.com/k0kubun/pp"
 )
 
 // dummy Trie
@@ -145,15 +143,15 @@ func TestGetLastBros(t *testing.T) {
 
 func TestSetChild(t *testing.T) {
 	expectTrie1, nodes1 := generateFixture()
-	inputNode1 := Node{data: &Data{key: ":", path: "/user/:userID/:attrID", handler: nil}}
+	inputNode1 := Node{data: &Data{key: ":", path: "/user/:userID/:attrID"}}
 	nodes1["user3a"].bros = &inputNode1
 
 	expectTrie2, nodes2 := generateFixture()
-	inputNode2 := Node{data: &Data{key: ":", path: "/shop/:shopID/:paymentID/:dummyID", handler: nil}}
-	nodes2["shop3b"].bros = &inputNode2
+	inputNode2 := Node{data: &Data{key: ":", path: "/shop/:shopID/:paymentID/:dummyID"}}
+	nodes2["shop3b"].child = &inputNode2
 
 	expectTrie3, _ := generateFixture()
-	inputNode3 := Node{data: &Data{key: ":", path: "/user/:userID", handler: nil}}
+	inputNode3 := Node{data: &Data{key: ":", path: "/user/:userID"}}
 
 	cases := []struct {
 		start       string
@@ -161,8 +159,8 @@ func TestSetChild(t *testing.T) {
 		expectError error
 		expectTree  Trie
 	}{
-		{"user3a", inputNode1, nil, expectTrie1},
-		{"shop3a", inputNode2, nil, expectTrie2},
+		{"user2b", inputNode1, nil, expectTrie1},
+		{"shop3b", inputNode2, nil, expectTrie2},
 		{"user1a", inputNode3, ErrAlreadyPathRegistered, expectTrie3},
 	}
 	for i, c := range cases {
@@ -200,31 +198,38 @@ func TestFind(t *testing.T) {
 	}
 }
 
-func _TestInsert(t *testing.T) {
-	setupFixture()
+func TestInsert(t *testing.T) {
+	expectTrie1, nodes1 := generateFixture()
+	nodes1["user3a"].bros = &Node{data: &Data{key: "dummy", path: "/user/:userID/dummy"}}
 
-	expectTrie1, nodes := generateFixture()
-	nodes["user3a"].bros = &Node{data: &Data{key: ":", path: "/user/:userID/:attrID", handler: nil}}
+	expectTrie2, nodes1 := generateFixture()
+	nodes1["shop3b"].child = &Node{data: &Data{key: ":", path: "/shop/:shopID/:paymentID/:dummyID"}}
+
+	expectTrie3, nodes1 := generateFixture()
+	node3 := &Node{
+		data:  &Data{key: "/"},
+		child: &Node{data: &Data{key: "post", path: "/post"}},
+	}
+	expectTrie3.root["POST"] = node3
 
 	cases := []struct {
-		input        string
+		inputPath    string
+		inputMethod  string
 		expectResult error
 		expectTree   Trie
 	}{
-		{"/user/:userID/:attrID", nil, expectTrie1},
-		// {"user/:userID/:attrID", ErrInvalidPathFormat, expectNode1},
+		{"/user/:userID/dummy", "GET", nil, expectTrie1},
+		{"/shop/:shopID/:paymentID/:dummyID", "GET", nil, expectTrie2},
+		{"/post", "POST", nil, expectTrie3},
 	}
 	for i, c := range cases {
-		result := fixtureTrie.insert(c.input, nil)
+		setupFixture()
+		result := fixtureTrie.insert(c.inputPath, c.inputMethod, nil)
 		if result != c.expectResult {
 			t.Errorf("#%d: want result:%#v, got result:%#v", i, c.expectResult, result)
 		}
-
 		if !reflect.DeepEqual(c.expectTree, fixtureTrie) {
 			t.Errorf("#%d: want tree:%#v, got tree:%#v", i, c.expectTree, fixtureTrie)
-			// log.Println(pretty.Compare(fixtureTrie, c.expectTree))
-			// pp.Println(c.expectTree)
-			pp.Println(fixtureTrie)
 		}
 	}
 }
