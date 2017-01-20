@@ -240,3 +240,35 @@ func TestInsert(t *testing.T) {
 		}
 	}
 }
+
+func TestConstruct(t *testing.T) {
+	setupFixture()
+
+	input1 := []*Route{
+		&Route{path: "/user/list", method: "GET"},
+		&Route{path: "/user/:userID", method: "GET"},
+		&Route{path: "/user/:userID/follow", method: "GET"},
+		&Route{path: "/shop/:shopID/detail", method: "GET"},
+		&Route{path: "/shop/:shopID/:paymentID", method: "GET"},
+	}
+
+	cases := []struct {
+		input       []*Route
+		expectError error
+		expectTree  Trie
+	}{
+		{input1, nil, fixtureTrie},
+	}
+	for i, c := range cases {
+		trie := NewTrie()
+		err := trie.Construct(c.input)
+		if err != c.expectError {
+			t.Errorf("#%d: want error:%#v , got error:%#v ", i, c.expectError, err)
+		}
+		if !reflect.DeepEqual(c.expectTree, trie) {
+			t.Errorf("#%d: want result:%#v , got result:%#v ", i, c.expectTree, trie)
+			// pp.Println(trie)
+			// pp.Println(fixtureTrie)
+		}
+	}
+}

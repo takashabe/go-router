@@ -23,7 +23,7 @@ Design
 const paramPrefix = ":"
 
 type Routing interface {
-	Lookup(string) (HandlerData, error)
+	Lookup(string, string) (HandlerData, error)
 	Construct([]*Route) error
 }
 
@@ -57,7 +57,7 @@ func (r *Router) Construct() error {
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	handler, err := r.routing.Lookup(req.URL.Path)
+	handler, err := r.routing.Lookup(req.URL.Path, req.Method)
 	log.Println("handler=%v", handler)
 	if err != nil {
 		log.Printf(err.Error())
@@ -82,7 +82,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *Router) HandleFunc(path string, h baseHandler) *Route {
-	return r.AddRoute().HandleFunc(path, h)
+	return r.AddRoute().HandleFunc(path, "", h)
 }
 
 func (r *Router) AddRoute() *Route {

@@ -30,11 +30,22 @@ type Data struct {
 	handler baseHandler
 }
 
-func (t *Trie) Lookup(path string) (HandlerData, error) {
+func NewTrie() Trie {
+	// cap num refers to: net/http/method.go
+	return Trie{root: make(map[string]*Node, 9)}
+}
+
+func (t *Trie) Lookup(path string, method string) (HandlerData, error) {
 	return HandlerData{}, ErrPathNotFound
 }
 
 func (t *Trie) Construct(routes []*Route) error {
+	for _, r := range routes {
+		err := t.insert(r.path, r.method, r.handler)
+		if err != nil {
+			return errors.Wrap(err, "failed construct tree")
+		}
+	}
 	return nil
 }
 
@@ -95,7 +106,7 @@ func (t *Trie) insert(path, method string, handler baseHandler) error {
 			data.path = path
 			data.handler = handler
 		}
-		_, err := dst.setChild(Node{data: &data})
+		dst, err = dst.setChild(Node{data: &data})
 		if err != nil {
 			return err
 		}
