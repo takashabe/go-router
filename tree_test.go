@@ -96,7 +96,7 @@ func TestGetBros(t *testing.T) {
 	}
 	for i, c := range cases {
 		result, ok := c.start.getBros(c.input)
-		if result != c.expectNode || c.expectBool != ok {
+		if !reflect.DeepEqual(result, c.expectNode) || c.expectBool != ok {
 			t.Errorf("#%d: want result:%#v ok:%t, got result:%#v ok:%t", i, c.expectNode, c.expectBool, result, ok)
 		}
 	}
@@ -117,7 +117,7 @@ func TestGetChild(t *testing.T) {
 	}
 	for i, c := range cases {
 		result, ok := c.start.getChild(c.input)
-		if result != c.expectNode || c.expectBool != ok {
+		if !reflect.DeepEqual(result, c.expectNode) || c.expectBool != ok {
 			t.Errorf("#%d: want result:%#v ok:%t, got result:%#v ok:%t", i, c.expectNode, c.expectBool, result, ok)
 		}
 	}
@@ -135,7 +135,7 @@ func TestGetLastBros(t *testing.T) {
 	}
 	for i, c := range cases {
 		result := c.start.getLastBros()
-		if result != c.expectNode {
+		if !reflect.DeepEqual(result, c.expectNode) {
 			t.Errorf("#%d: want result:%#v, got result:%#v", i, c.expectNode, result)
 		}
 	}
@@ -189,11 +189,11 @@ func TestFind(t *testing.T) {
 	}
 	for i, c := range cases {
 		result, err := fixtureTrie.find(c.input, "GET")
-		if result != c.expectNode {
-			t.Errorf("#%d: want result:%#v , got result:%#v ", i, c.expectNode, result)
-		}
 		if err != c.expectError {
 			t.Errorf("#%d: want error:%#v , got error:%#v ", i, c.expectError, err)
+		}
+		if !reflect.DeepEqual(result, c.expectNode) {
+			t.Errorf("#%d: want result:%#v , got result:%#v ", i, c.expectNode, result)
 		}
 	}
 }
