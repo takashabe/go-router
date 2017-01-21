@@ -337,10 +337,10 @@ func TestConstruct(t *testing.T) {
 	cases := []struct {
 		input       []*Route
 		expectError error
-		expectTree  Trie
+		expectTree  *Trie
 	}{
-		{input1, nil, fixtureTrie},
-		{input2, ErrInvalidPathFormat, *NewTrie()},
+		{input1, nil, &fixtureTrie},
+		{input2, ErrInvalidPathFormat, NewTrie()},
 	}
 	for i, c := range cases {
 		trie := NewTrie()

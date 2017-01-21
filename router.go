@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+
+	"github.com/pkg/errors"
 )
 
 /*
@@ -20,11 +22,13 @@ Design
 
 */
 
-const paramPrefix = ":"
+var (
+	ErrNotFoundHandler = errors.New("not found matched handler")
+)
 
 type Routing interface {
-	Lookup(string, string) (HandlerData, error)
-	Construct([]*Route) error
+	Lookup(method, path string) (HandlerData, error)
+	Construct(routes []*Route) error
 }
 
 type HandlerData struct {
@@ -40,10 +44,10 @@ type Router struct {
 	routing         Routing
 }
 
-func New() *Router {
+func NewRouter() *Router {
 	return &Router{
 		NotFoundHandler: http.NotFoundHandler(),
-		routing:         &Trie{},
+		routing:         NewTrie(),
 	}
 }
 
@@ -57,32 +61,55 @@ func (r *Router) Construct() error {
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	handler, err := r.routing.Lookup(req.URL.Path, req.Method)
-	log.Println("handler=%v", handler)
+	hd, err := r.routing.Lookup(req.URL.Path, req.Method)
 	if err != nil {
-		log.Printf(err.Error())
+		log.Printf("%+v\n", err)
 		r.NotFoundHandler.ServeHTTP(w, req)
 		return
 	}
 
-	ref := reflect.ValueOf(handler)
+	ref := reflect.ValueOf(hd.handler)
 	if ref.Kind() != reflect.Func {
+		// TODO: error
 		log.Println("Handler is must be Func. but handler kind:%v, path:%v", ref.Kind(), req.URL.Path)
 	}
+	args, err := parseParams(w, req, hd)
+	if err != nil {
+		log.Printf("%+v\n", err)
+		r.NotFoundHandler.ServeHTTP(w, req)
+		return
+	}
+	ref.Call(args)
+}
+
+// params convert to []reflect.Value
+func parseParams(w http.ResponseWriter, req *http.Request, hd HandlerData) ([]reflect.Value, error) {
 	// static args
 	args := []reflect.Value{
 		reflect.ValueOf(w),
 		reflect.ValueOf(req),
 	}
-	// choose dynamic args
-	for i := 2; i < reflect.TypeOf(handler).NumIn(); i++ {
-
+	// dynamic args
+	for _, v := range hd.params {
+		args = append(args, reflect.ValueOf(v))
 	}
-	ref.Call(args)
+	if reflect.TypeOf(hd.handler).NumIn() != len(args) {
+		log.Printf("NumIn()=%v, len(args)=%d\n", reflect.TypeOf(hd.handler).NumIn(), len(args))
+		return nil, errors.Wrapf(ErrNotFoundHandler, "path=%s, handler=%v", req.URL.Path, hd.handler)
+	}
+	return args, nil
 }
 
-func (r *Router) HandleFunc(path string, h baseHandler) *Route {
-	return r.AddRoute().HandleFunc(path, "", h)
+func (r *Router) Get(path string, h baseHandler) *Route {
+	return r.AddRoute().HandleFunc(path, "GET", h)
+}
+
+func (r *Router) Post(path string, h baseHandler) *Route {
+	return r.AddRoute().HandleFunc(path, "POST", h)
+}
+
+func (r *Router) HandleFunc(method, path string, h baseHandler) *Route {
+	return r.AddRoute().HandleFunc(method, path, h)
 }
 
 func (r *Router) AddRoute() *Route {
