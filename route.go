@@ -2,12 +2,13 @@ package router
 
 type Route struct {
 	// called on request(ServeHTTP). behavior like http.handler
-	handler baseHandler
-	path    string
 	method  string
+	path    string
+	handler baseHandler
 }
 
-func (r *Route) HandleFunc(path, method string, h baseHandler) *Route {
+func (r *Route) HandleFunc(method, path string, h baseHandler) *Route {
+	r.method = method
 	r.path = path
 	r.handler = h
 	return r

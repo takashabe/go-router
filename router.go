@@ -4,31 +4,21 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"strconv"
 
 	"github.com/pkg/errors"
 )
 
-/*
-Design
-
-* simple
-* micro wrapper on net/http
-* choosable HTTP method. GET, POST...
-* parsable URL parameter. "/user/:id"
-	* mapping method args. "/user/:user_id/asset/:asset_id" => func(..., userId int, assetId int)
-		1. define => router.HandleFunc("/user/:id", userHandler)
-		2. parse url path, and extra url params(:id)
-		3. call userHandler to with params
-
-*/
-
 var (
 	ErrNotFoundHandler = errors.New("not found matched handler")
+	ErrInvalidHandler  = errors.New("invalid handler")
+	ErrInvalidParam    = errors.New("invalid param")
 )
 
 type Routing interface {
 	Lookup(method, path string) (HandlerData, error)
 	Construct(routes []*Route) error
+	Insert(method, path string, handler baseHandler) error
 }
 
 type HandlerData struct {
@@ -68,48 +58,73 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ref := reflect.ValueOf(hd.handler)
-	if ref.Kind() != reflect.Func {
-		// TODO: error
-		log.Println("Handler is must be Func. but handler kind:%v, path:%v", ref.Kind(), req.URL.Path)
-	}
-	args, err := parseParams(w, req, hd)
+	err = callHandler(w, req, hd)
 	if err != nil {
 		log.Printf("%+v\n", err)
 		r.NotFoundHandler.ServeHTTP(w, req)
 		return
 	}
+}
+
+func callHandler(w http.ResponseWriter, req *http.Request, hd HandlerData) error {
+	ref := reflect.ValueOf(hd.handler)
+	if ref.Kind() != reflect.Func {
+		return errors.Wrapf(ErrInvalidHandler, "handler is must be Func. got:%v", ref.Kind())
+	}
+	args, err := parseParams(w, req, hd)
+	if err != nil {
+		return errors.Wrapf(err, "failed parsed params")
+	}
 	ref.Call(args)
+	return nil
 }
 
 // params convert to []reflect.Value
 func parseParams(w http.ResponseWriter, req *http.Request, hd HandlerData) ([]reflect.Value, error) {
+	// static args means http.ResponseWriter and *http.Request
+	numStaticArgs := 2
+
+	ref := reflect.TypeOf(hd.handler)
+	if ref.NumIn() != len(hd.params)+numStaticArgs {
+		return nil, errors.Wrapf(ErrNotFoundHandler, "path=%s, handler=%v", req.URL.Path, hd.handler)
+	}
+
 	// static args
 	args := []reflect.Value{
 		reflect.ValueOf(w),
 		reflect.ValueOf(req),
 	}
 	// dynamic args
-	for _, v := range hd.params {
-		args = append(args, reflect.ValueOf(v))
-	}
-	if reflect.TypeOf(hd.handler).NumIn() != len(args) {
-		log.Printf("NumIn()=%v, len(args)=%d\n", reflect.TypeOf(hd.handler).NumIn(), len(args))
-		return nil, errors.Wrapf(ErrNotFoundHandler, "path=%s, handler=%v", req.URL.Path, hd.handler)
+	for i := numStaticArgs; i < ref.NumIn(); i++ {
+		switch ref.In(i).Kind() {
+		case reflect.Int:
+			p, err := strconv.Atoi(hd.params[i-numStaticArgs].(string))
+			if err != nil {
+				return nil, errors.Wrapf(ErrInvalidParam, "%s", err)
+			}
+			args = append(args, reflect.ValueOf(p))
+		default:
+			args = append(args, reflect.ValueOf(hd.params[i-numStaticArgs]))
+		}
 	}
 	return args, nil
 }
 
 func (r *Router) Get(path string, h baseHandler) *Route {
-	return r.AddRoute().HandleFunc(path, "GET", h)
+	return r.HandleFunc("GET", path, h)
 }
 
 func (r *Router) Post(path string, h baseHandler) *Route {
-	return r.AddRoute().HandleFunc(path, "POST", h)
+	return r.HandleFunc("POST", path, h)
 }
 
 func (r *Router) HandleFunc(method, path string, h baseHandler) *Route {
-	return r.AddRoute().HandleFunc(method, path, h)
+	route := r.AddRoute().HandleFunc(method, path, h)
+	err := r.routing.Insert(route.method, route.path, route.handler)
+	if err != nil {
+		log.Printf("failed registered path. %+v", err)
+	}
+	return route
 }
 
 func (r *Router) AddRoute() *Route {

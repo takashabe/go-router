@@ -309,7 +309,7 @@ func TestInsert(t *testing.T) {
 	}
 	for i, c := range cases {
 		setupFixture()
-		result := fixtureTrie.insert(c.inputPath, c.inputMethod, nil)
+		result := fixtureTrie.Insert(c.inputMethod, c.inputPath, nil)
 		if result != c.expectResult {
 			t.Errorf("#%d: want result:%#v, got result:%#v", i, c.expectResult, result)
 		}

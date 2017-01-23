@@ -8,39 +8,22 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 )
 
-func dummyHandler(w http.ResponseWriter, req *http.Request) {}
+func dummyHandler(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprint(w, "hello, world")
+}
 
-func dummyHandlerWithParams(w http.ResponseWriter, req *http.Request, id int, name string) {}
+func dummyHandlerWithParams(w http.ResponseWriter, req *http.Request, id int, name string) {
+	fmt.Fprintf(w, "id=%d, name=%s", id, name)
+}
 
+// for debug
 func printValues(vs []reflect.Value) {
 	for _, v := range vs {
 		fmt.Printf("%#v\n", v)
 	}
-}
-
-func _TestServeHTTP(t *testing.T) {
-	r := NewRouter()
-	r.Get("/dummy/", dummyHandler)
-	r.Get("/dummy/:id/dummy/:name", dummyHandlerWithParams)
-	err := r.Construct()
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	http.Handle("/", r)
-	ts := httptest.NewServer(r)
-
-	res, err := http.Get(ts.URL + "/user")
-	defer res.Body.Close()
-	if err != nil {
-		t.Errorf("want no error, got %v", err)
-	}
-	body, _ := ioutil.ReadAll(res.Body)
-	pp.Println(string(body))
 }
 
 func TestParseParams(t *testing.T) {
@@ -54,7 +37,7 @@ func TestParseParams(t *testing.T) {
 				handler: dummyHandlerWithParams,
 				params:  []interface{}{"10", "name"},
 			},
-			[]reflect.Value{reflect.ValueOf("10"), reflect.ValueOf("name")},
+			[]reflect.Value{reflect.ValueOf(10), reflect.ValueOf("name")},
 			nil,
 		},
 		{
@@ -62,8 +45,16 @@ func TestParseParams(t *testing.T) {
 				handler: dummyHandlerWithParams,
 				params:  []interface{}{"10"},
 			},
-			[]reflect.Value{reflect.ValueOf("10"), reflect.ValueOf("name")},
+			[]reflect.Value{reflect.ValueOf(10), reflect.ValueOf("name")},
 			ErrNotFoundHandler,
+		},
+		{
+			HandlerData{
+				handler: dummyHandlerWithParams,
+				params:  []interface{}{"hoge", "name"},
+			},
+			[]reflect.Value{reflect.ValueOf(10), reflect.ValueOf("name")},
+			ErrInvalidParam,
 		},
 	}
 	for i, c := range cases {
@@ -85,5 +76,89 @@ func TestParseParams(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestCallHandler(t *testing.T) {
+	cases := []struct {
+		input  HandlerData
+		expect error
+	}{
+		{
+			HandlerData{
+				handler: dummyHandlerWithParams,
+				params:  []interface{}{"10", "name"},
+			},
+			nil,
+		},
+		{
+			HandlerData{
+				handler: "not func",
+				params:  []interface{}{"10", "name"},
+			},
+			ErrInvalidHandler,
+		},
+	}
+	for i, c := range cases {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/", nil)
+		err := callHandler(w, r, c.input)
+		if errors.Cause(err) != c.expect {
+			t.Errorf("#%d: want error:%#v , got error:%#v ", i, c.expect, err)
+		}
+	}
+}
+
+func TestServeHTTP(t *testing.T) {
+	r := NewRouter()
+	http.Handle("/", r)
+	ts := httptest.NewServer(r)
+
+	cases := []struct {
+		serverPath    string
+		serverHandler baseHandler
+		inputMethod   string
+		inputPath     string
+		expectBody    string
+	}{
+		{
+			"/dummy/",
+			dummyHandler,
+			"GET",
+			"/dummy",
+			"hello, world",
+		},
+		{
+			"/dummy/:id/dummy/:name",
+			dummyHandlerWithParams,
+			"GET",
+			"/dummy/10/dummy/hoge",
+			"id=10, name=hoge",
+		},
+		{
+			"/dummy/",
+			func(w http.ResponseWriter, req *http.Request) { fmt.Fprintf(w, "from post") },
+			"POST",
+			"/dummy/",
+			"from post",
+		},
+	}
+	for i, c := range cases {
+		r.HandleFunc(c.inputMethod, c.serverPath, c.serverHandler)
+		req, err := http.NewRequest(c.inputMethod, ts.URL+c.inputPath, nil)
+		if err != nil {
+			t.Errorf("want no error, got %v", err)
+		}
+
+		client := &http.Client{}
+		res, err := client.Do(req)
+		if err != nil {
+			t.Errorf("want no error, got %v", err)
+		}
+		body, _ := ioutil.ReadAll(res.Body)
+		if c.expectBody != string(body) {
+			t.Errorf("#%d: want body:%s, got body:%s", i, c.expectBody, string(body))
+		}
+		res.Body.Close()
 	}
 }
