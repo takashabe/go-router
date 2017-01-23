@@ -296,10 +296,10 @@ func TestInsert(t *testing.T) {
 	expectTrie, _ := generateFixture()
 
 	cases := []struct {
-		inputPath    string
-		inputMethod  string
-		expectResult error
-		expectTree   Trie
+		inputPath   string
+		inputMethod string
+		expectErr   error
+		expectTree  Trie
 	}{
 		{"/user/:userID/dummy", "GET", nil, expectTrie1},
 		{"/shop/:shopID/:paymentID/:dummyID", "GET", nil, expectTrie2},
@@ -309,47 +309,12 @@ func TestInsert(t *testing.T) {
 	}
 	for i, c := range cases {
 		setupFixture()
-		result := fixtureTrie.Insert(c.inputMethod, c.inputPath, nil)
-		if result != c.expectResult {
-			t.Errorf("#%d: want result:%#v, got result:%#v", i, c.expectResult, result)
+		err := fixtureTrie.Insert(c.inputMethod, c.inputPath, nil)
+		if errors.Cause(err) != c.expectErr {
+			t.Errorf("#%d: want error:%#v, got error:%#v", i, c.expectErr, err)
 		}
 		if !reflect.DeepEqual(c.expectTree, fixtureTrie) {
 			t.Errorf("#%d: want tree:%#v, got tree:%#v", i, c.expectTree, fixtureTrie)
-		}
-	}
-}
-
-func TestConstruct(t *testing.T) {
-	setupFixture()
-
-	input1 := []*Route{
-		&Route{path: "/user/list", method: "GET"},
-		&Route{path: "/user/:userID", method: "GET"},
-		&Route{path: "/user/:userID/follow", method: "GET"},
-		&Route{path: "/shop/:shopID/detail", method: "GET"},
-		&Route{path: "/shop/:shopID/:paymentID", method: "GET"},
-	}
-
-	input2 := []*Route{
-		&Route{path: "user/list", method: "GET"},
-	}
-
-	cases := []struct {
-		input       []*Route
-		expectError error
-		expectTree  *Trie
-	}{
-		{input1, nil, &fixtureTrie},
-		{input2, ErrInvalidPathFormat, NewTrie()},
-	}
-	for i, c := range cases {
-		trie := NewTrie()
-		err := trie.Construct(c.input)
-		if errors.Cause(err) != c.expectError {
-			t.Errorf("#%d: want error:%#v , got error:%#v ", i, c.expectError, err)
-		}
-		if !reflect.DeepEqual(c.expectTree, trie) {
-			t.Errorf("#%d: want result:%#v , got result:%#v ", i, c.expectTree, trie)
 		}
 	}
 }

@@ -72,20 +72,10 @@ func (t *Trie) find(path string, method string) (*Node, error) {
 	return nil, ErrPathNotFound
 }
 
-func (t *Trie) Construct(routes []*Route) error {
-	for _, r := range routes {
-		err := t.Insert(r.method, r.path, r.handler)
-		if err != nil {
-			return errors.Wrap(err, "failed construct tree")
-		}
-	}
-	return nil
-}
-
 func (t *Trie) Insert(method, path string, handler baseHandler) error {
 	path, err := validatePath(path)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed insert. path=%s, method=%s", path, method)
 	}
 
 	dst, ok := t.root[method]

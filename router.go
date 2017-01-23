@@ -17,7 +17,6 @@ var (
 
 type Routing interface {
 	Lookup(method, path string) (HandlerData, error)
-	Construct(routes []*Route) error
 	Insert(method, path string, handler baseHandler) error
 }
 
@@ -43,11 +42,6 @@ func NewRouter() *Router {
 
 func (r *Router) SetRouting(routing Routing) {
 	r.routing = routing
-}
-
-// Building routing tree
-func (r *Router) Construct() error {
-	return r.routing.Construct(r.routes)
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
