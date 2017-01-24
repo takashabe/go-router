@@ -47,7 +47,7 @@ func (t *Trie) Lookup(path string, method string) (HandlerData, error) {
 }
 
 func (t *Trie) find(path string, method string) (*Node, error) {
-	path, err := validatePath(path)
+	parts, err := generateSplitPath(path)
 	if err != nil {
 		return nil, err
 	}
@@ -57,9 +57,6 @@ func (t *Trie) find(path string, method string) (*Node, error) {
 		return nil, ErrPathNotFound
 	}
 
-	parts := strings.Split(path, "/")
-	// exclude "/"
-	parts = parts[1:]
 	for _, p := range parts {
 		if n, ok := dst.getChild(p); ok {
 			dst = n
@@ -73,7 +70,7 @@ func (t *Trie) find(path string, method string) (*Node, error) {
 }
 
 func (t *Trie) Insert(method, path string, handler baseHandler) error {
-	path, err := validatePath(path)
+	parts, err := generateSplitPath(path)
 	if err != nil {
 		return errors.Wrapf(err, "failed insert. path=%s, method=%s", path, method)
 	}
@@ -84,7 +81,16 @@ func (t *Trie) Insert(method, path string, handler baseHandler) error {
 		dst = t.root[method]
 	}
 
-	parts := strings.Split(path, "/")
+	// insert "/"
+	if dst.data.key == path {
+		dst.data = &Data{
+			key:     parts[0],
+			path:    path,
+			handler: handler,
+		}
+		return nil
+	}
+
 	// exclude "/"
 	parts = parts[1:]
 	for i, p := range parts {
@@ -110,6 +116,19 @@ func (t *Trie) Insert(method, path string, handler baseHandler) error {
 	return nil
 }
 
+func generateSplitPath(s string) ([]string, error) {
+	s, err := validatePath(s)
+	if err != nil {
+		return nil, err
+	}
+
+	ds := strings.Split(s, "/")
+	ds[0] = "/"
+	return ds, nil
+}
+
+// check valid path. path is must be begin "/"
+// if path "/foo/bar/.../" trim last "/"
 func validatePath(s string) (string, error) {
 	if string(s[0]) != "/" {
 		return "", ErrInvalidPathFormat
@@ -216,13 +235,14 @@ func (n *Node) pathEqual(path string) bool {
 	if len(n.data.path) == 0 {
 		return false
 	}
-	path, err := validatePath(path)
+	a, err := generateSplitPath(n.data.path)
 	if err != nil {
 		return false
 	}
-
-	a := strings.Split(n.data.path, "/")
-	b := strings.Split(path, "/")
+	b, err := generateSplitPath(path)
+	if err != nil {
+		return false
+	}
 	if len(a) != len(b) {
 		return false
 	}
@@ -243,13 +263,14 @@ func (n *Node) exportParam(path string) []interface{} {
 	if len(n.data.path) == 0 {
 		return p
 	}
-	path, err := validatePath(path)
+	a, err := generateSplitPath(n.data.path)
 	if err != nil {
 		return p
 	}
-
-	a := strings.Split(n.data.path, "/")
-	b := strings.Split(path, "/")
+	b, err := generateSplitPath(path)
+	if err != nil {
+		return p
+	}
 	if len(a) != len(b) {
 		return p
 	}

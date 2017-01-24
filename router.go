@@ -29,32 +29,28 @@ type baseHandler interface{}
 
 type Router struct {
 	NotFoundHandler http.Handler
+	Routing         Routing
 	routes          []*Route
-	routing         Routing
 }
 
 func NewRouter() *Router {
 	return &Router{
 		NotFoundHandler: http.NotFoundHandler(),
-		routing:         NewTrie(),
+		Routing:         NewTrie(),
 	}
 }
 
-func (r *Router) SetRouting(routing Routing) {
-	r.routing = routing
-}
-
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	hd, err := r.routing.Lookup(req.URL.Path, req.Method)
+	hd, err := r.Routing.Lookup(req.URL.Path, req.Method)
 	if err != nil {
-		log.Printf("%+v\n", err)
+		log.Printf("%v\n", err)
 		r.NotFoundHandler.ServeHTTP(w, req)
 		return
 	}
 
 	err = callHandler(w, req, hd)
 	if err != nil {
-		log.Printf("%+v\n", err)
+		log.Printf("%v\n", err)
 		r.NotFoundHandler.ServeHTTP(w, req)
 		return
 	}
@@ -114,7 +110,7 @@ func (r *Router) Post(path string, h baseHandler) *Route {
 
 func (r *Router) HandleFunc(method, path string, h baseHandler) *Route {
 	route := r.AddRoute().HandleFunc(method, path, h)
-	err := r.routing.Insert(route.method, route.path, route.handler)
+	err := r.Routing.Insert(route.method, route.path, route.handler)
 	if err != nil {
 		log.Printf("failed registered path. %+v", err)
 	}

@@ -110,23 +110,21 @@ func TestCallHandler(t *testing.T) {
 }
 
 func TestServeHTTP(t *testing.T) {
-	r := NewRouter()
-	http.Handle("/", r)
-	ts := httptest.NewServer(r)
-
 	cases := []struct {
 		serverPath    string
 		serverHandler baseHandler
 		inputMethod   string
 		inputPath     string
 		expectBody    string
+		expectStatus  int
 	}{
 		{
-			"/dummy/",
+			"/",
 			dummyHandler,
 			"GET",
-			"/dummy",
+			"/",
 			"hello, world",
+			200,
 		},
 		{
 			"/dummy/:id/dummy/:name",
@@ -134,16 +132,38 @@ func TestServeHTTP(t *testing.T) {
 			"GET",
 			"/dummy/10/dummy/hoge",
 			"id=10, name=hoge",
+			200,
+		},
+		{
+			"/",
+			func(w http.ResponseWriter, req *http.Request) { fmt.Fprintf(w, "from post") },
+			"POST",
+			"/",
+			"from post",
+			200,
 		},
 		{
 			"/dummy/",
-			func(w http.ResponseWriter, req *http.Request) { fmt.Fprintf(w, "from post") },
-			"POST",
-			"/dummy/",
-			"from post",
+			dummyHandler,
+			"GET",
+			"/dummy/10",
+			"404 page not found\n", // http.NotFoundHandler used fmt.Fprintln()
+			404,
+		},
+		{
+			"/dummy/:id",
+			func(w http.ResponseWriter, req *http.Request, id int) {},
+			"GET",
+			"/dummy/notint",
+			"404 page not found\n", // http.NotFoundHandler used fmt.Fprintln()
+			404,
 		},
 	}
 	for i, c := range cases {
+		r := NewRouter()
+		ts := httptest.NewServer(r)
+		defer ts.Close()
+
 		r.HandleFunc(c.inputMethod, c.serverPath, c.serverHandler)
 		req, err := http.NewRequest(c.inputMethod, ts.URL+c.inputPath, nil)
 		if err != nil {
@@ -152,13 +172,94 @@ func TestServeHTTP(t *testing.T) {
 
 		client := &http.Client{}
 		res, err := client.Do(req)
+		defer res.Body.Close()
 		if err != nil {
 			t.Errorf("want no error, got %v", err)
 		}
-		body, _ := ioutil.ReadAll(res.Body)
-		if c.expectBody != string(body) {
+
+		if res.StatusCode != c.expectStatus {
+			t.Errorf("#%d: want status code:%s, got status code:%s", i, c.expectStatus, res.StatusCode)
+		}
+		if body, _ := ioutil.ReadAll(res.Body); c.expectBody != string(body) {
 			t.Errorf("#%d: want body:%s, got body:%s", i, c.expectBody, string(body))
 		}
-		res.Body.Close()
+	}
+}
+
+func TestServeHTTPWithMultiplePath(t *testing.T) {
+	cases := []struct {
+		routes       []*Route
+		inputMethod  string
+		inputPath    string
+		expectStatus int
+	}{
+		{
+			[]*Route{
+				&Route{method: "GET", path: "/dummy/:id", handler: dummyHandler},
+				&Route{method: "GET", path: "/dummy/", handler: dummyHandler},
+				&Route{method: "GET", path: "/", handler: dummyHandler},
+			},
+			"GET",
+			"/dummy/",
+			200,
+		},
+	}
+	for i, c := range cases {
+		r := NewRouter()
+		ts := httptest.NewServer(r)
+		defer ts.Close()
+
+		for _, route := range c.routes {
+			r.HandleFunc(route.method, route.path, route.handler)
+		}
+		req, err := http.NewRequest(c.inputMethod, ts.URL+c.inputPath, nil)
+		if err != nil {
+			t.Errorf("want no error, got %v", err)
+		}
+
+		client := &http.Client{}
+		res, err := client.Do(req)
+		defer res.Body.Close()
+		if err != nil {
+			t.Errorf("want no error, got %v", err)
+		}
+
+		if res.StatusCode != c.expectStatus {
+			t.Errorf("#%d: want status code:%s, got status code:%s", i, c.expectStatus, res.StatusCode)
+		}
+	}
+}
+
+func TestHandleFuncWithMethod(t *testing.T) {
+	echoMethod := func(w http.ResponseWriter, req *http.Request) {
+		fmt.Fprint(w, req.Method)
+	}
+
+	r := NewRouter()
+	r.Get("/", echoMethod)
+	r.Post("/", echoMethod)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	cases := []struct {
+		method string
+	}{
+		{"GET"},
+		{"POST"},
+	}
+	for i, c := range cases {
+		req, err := http.NewRequest(c.method, ts.URL+"/", nil)
+		if err != nil {
+			t.Errorf("want no error, got %v", err)
+		}
+		client := &http.Client{}
+		res, err := client.Do(req)
+		defer res.Body.Close()
+		if err != nil {
+			t.Errorf("want no error, got %v", err)
+		}
+		if body, _ := ioutil.ReadAll(res.Body); c.method != string(body) {
+			t.Errorf("#%d: want body:%s, got body:%s", i, c.method, string(body))
+		}
 	}
 }

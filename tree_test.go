@@ -231,6 +231,11 @@ func TestPathEqual(t *testing.T) {
 			true,
 		},
 		{
+			&Node{data: &Data{path: "/"}},
+			"/",
+			true,
+		},
+		{
 			&Node{data: &Data{path: "/user/:userID/follow"}},
 			"user/10/follow/",
 			false,
@@ -280,20 +285,23 @@ func TestFind(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	expectTrie1, nodes1 := generateFixture()
-	nodes1["user3a"].bros = &Node{data: &Data{key: "dummy", path: "/user/:userID/dummy"}}
+	expectTrie1, nodes := generateFixture()
+	nodes["user3a"].bros = &Node{data: &Data{key: "dummy", path: "/user/:userID/dummy"}}
 
-	expectTrie2, nodes1 := generateFixture()
-	nodes1["shop3b"].child = &Node{data: &Data{key: ":", path: "/shop/:shopID/:paymentID/:dummyID"}}
+	expectTrie2, nodes := generateFixture()
+	nodes["shop3b"].child = &Node{data: &Data{key: ":", path: "/shop/:shopID/:paymentID/:dummyID"}}
 
-	expectTrie3, nodes1 := generateFixture()
+	expectTrie3, _ := generateFixture()
 	node3 := &Node{
 		data:  &Data{key: "/"},
 		child: &Node{data: &Data{key: "post", path: "/post"}},
 	}
 	expectTrie3.root["POST"] = node3
 
-	expectTrie, _ := generateFixture()
+	expectTrie4, nodes := generateFixture()
+	nodes["root"].data = &Data{key: "/", path: "/"}
+
+	expectTrieBase, _ := generateFixture()
 
 	cases := []struct {
 		inputPath   string
@@ -304,8 +312,9 @@ func TestInsert(t *testing.T) {
 		{"/user/:userID/dummy", "GET", nil, expectTrie1},
 		{"/shop/:shopID/:paymentID/:dummyID", "GET", nil, expectTrie2},
 		{"/post", "POST", nil, expectTrie3},
-		{"/user/:userID", "GET", ErrAlreadyPathRegistered, expectTrie},
-		{"user", "GET", ErrInvalidPathFormat, expectTrie},
+		{"/", "GET", nil, expectTrie4},
+		{"/user/:userID", "GET", ErrAlreadyPathRegistered, expectTrieBase},
+		{"user", "GET", ErrInvalidPathFormat, expectTrieBase},
 	}
 	for i, c := range cases {
 		setupFixture()
