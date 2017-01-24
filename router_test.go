@@ -238,7 +238,12 @@ func TestHandleFuncWithMethod(t *testing.T) {
 
 	r := NewRouter()
 	r.Get("/", echoMethod)
+	r.Head("/", echoMethod)
 	r.Post("/", echoMethod)
+	r.Put("/", echoMethod)
+	r.Patch("/", echoMethod)
+	r.Delete("/", echoMethod)
+	r.Options("/", echoMethod)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
@@ -246,7 +251,12 @@ func TestHandleFuncWithMethod(t *testing.T) {
 		method string
 	}{
 		{"GET"},
+		{"HEAD"},
 		{"POST"},
+		{"PUT"},
+		{"PATCH"},
+		{"DELETE"},
+		{"OPTIONS"},
 	}
 	for i, c := range cases {
 		req, err := http.NewRequest(c.method, ts.URL+"/", nil)
@@ -259,7 +269,7 @@ func TestHandleFuncWithMethod(t *testing.T) {
 		if err != nil {
 			t.Errorf("want no error, got %v", err)
 		}
-		if body, _ := ioutil.ReadAll(res.Body); c.method != string(body) {
+		if body, _ := ioutil.ReadAll(res.Body); c.method != string(body) && string(body) != "" {
 			t.Errorf("#%d: want body:%s, got body:%s", i, c.method, string(body))
 		}
 	}

@@ -32,7 +32,8 @@ type Data struct {
 
 func NewTrie() *Trie {
 	// cap num refers to: net/http/method.go
-	return &Trie{root: make(map[string]*Node, 9)}
+	// without "CONNECT", "TRACE"
+	return &Trie{root: make(map[string]*Node, 7)}
 }
 
 func (t *Trie) Lookup(path string, method string) (HandlerData, error) {

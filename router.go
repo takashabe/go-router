@@ -100,13 +100,13 @@ func parseParams(w http.ResponseWriter, req *http.Request, hd HandlerData) ([]re
 	return args, nil
 }
 
-func (r *Router) Get(path string, h baseHandler) *Route {
-	return r.HandleFunc("GET", path, h)
-}
-
-func (r *Router) Post(path string, h baseHandler) *Route {
-	return r.HandleFunc("POST", path, h)
-}
+func (r *Router) Get(path string, h baseHandler) *Route     { return r.HandleFunc("GET", path, h) }
+func (r *Router) Head(path string, h baseHandler) *Route    { return r.HandleFunc("HEAD", path, h) }
+func (r *Router) Post(path string, h baseHandler) *Route    { return r.HandleFunc("POST", path, h) }
+func (r *Router) Put(path string, h baseHandler) *Route     { return r.HandleFunc("PUT", path, h) }
+func (r *Router) Patch(path string, h baseHandler) *Route   { return r.HandleFunc("PATCH", path, h) }
+func (r *Router) Delete(path string, h baseHandler) *Route  { return r.HandleFunc("DELETE", path, h) }
+func (r *Router) Options(path string, h baseHandler) *Route { return r.HandleFunc("OPTIONS", path, h) }
 
 func (r *Router) HandleFunc(method, path string, h baseHandler) *Route {
 	route := r.AddRoute().HandleFunc(method, path, h)
