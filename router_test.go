@@ -197,6 +197,7 @@ func TestServeHTTPWithMultiplePath(t *testing.T) {
 			[]*Route{
 				&Route{method: "GET", path: "/dummy/:id", handler: dummyHandler},
 				&Route{method: "GET", path: "/dummy/", handler: dummyHandler},
+				&Route{method: "GET", path: "/dummy/", handler: dummyHandler},
 				&Route{method: "GET", path: "/", handler: dummyHandler},
 			},
 			"GET",

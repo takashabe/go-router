@@ -112,7 +112,7 @@ func (r *Router) HandleFunc(method, path string, h baseHandler) *Route {
 	route := r.AddRoute().HandleFunc(method, path, h)
 	err := r.Routing.Insert(route.method, route.path, route.handler)
 	if err != nil {
-		log.Printf("failed registered path. %+v", err)
+		log.Printf("failed registered path. %v", err)
 	}
 	return route
 }
