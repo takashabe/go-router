@@ -301,6 +301,9 @@ func TestInsert(t *testing.T) {
 	expectTrie4, nodes := generateFixture()
 	nodes["root"].data = &Data{key: "/", path: "/"}
 
+	expectTrie5, nodes := generateFixture()
+	nodes["user1a"].data = &Data{key: "user", path: "/user"}
+
 	expectTrieBase, _ := generateFixture()
 
 	cases := []struct {
@@ -313,6 +316,7 @@ func TestInsert(t *testing.T) {
 		{"/shop/:shopID/:paymentID/:dummyID", "GET", nil, expectTrie2},
 		{"/post", "POST", nil, expectTrie3},
 		{"/", "GET", nil, expectTrie4},
+		{"/user", "GET", nil, expectTrie5},
 		{"/user/:userID", "GET", ErrAlreadyPathRegistered, expectTrieBase},
 		{"user", "GET", ErrInvalidPathFormat, expectTrieBase},
 	}

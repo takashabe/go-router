@@ -97,11 +97,18 @@ func (t *Trie) Insert(method, path string, handler baseHandler) error {
 		p = convertParamKey(p)
 		if n, ok := dst.getChild(p); ok {
 			if len(parts)-1 == i {
+				// exist node, but yet registered path and handler
+				if n.data.path == "" {
+					n.data.path = path
+					n.data.handler = handler
+					return nil
+				}
 				return ErrAlreadyPathRegistered
 			}
 			dst = n
 			continue
 		}
+
 		data := Data{key: p}
 		// leaf node
 		if len(parts)-1 == i {
