@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
 
@@ -272,5 +273,19 @@ func TestHandleFuncWithMethod(t *testing.T) {
 		if body, _ := ioutil.ReadAll(res.Body); c.method != string(body) && string(body) != "" {
 			t.Errorf("#%d: want body:%s, got body:%s", i, c.method, string(body))
 		}
+	}
+}
+
+func TestServeHTTPWithPost(t *testing.T) {
+	r := NewRouter()
+	r.Post("/login", func(w http.ResponseWriter, req *http.Request) {})
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	_, err := http.PostForm(ts.URL+"/login", url.Values{
+		"id": []string{"foo", "bar"}},
+	)
+	if err != nil {
+		t.Errorf("%v", err)
 	}
 }
