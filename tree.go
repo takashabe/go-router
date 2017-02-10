@@ -7,9 +7,10 @@ import (
 )
 
 var (
-	ErrPathNotFound          = errors.New("path not found")
-	ErrInvalidPathFormat     = errors.New("invalid path format")
-	ErrAlreadyPathRegistered = errors.New("already path registered")
+	ErrPathNotFound                  = errors.New("path not found")
+	ErrInvalidPathFormat             = errors.New("invalid path format")
+	ErrAlreadyPathRegistered         = errors.New("already path registered")
+	ErrAlreadyWildcardPathRegistered = errors.New("already wildcard path registered")
 )
 
 type Trie struct {
@@ -149,13 +150,17 @@ func validatePath(s string) (string, error) {
 
 func convertParamKey(s string) string {
 	if isParamKey(s) {
-		return ":"
+		return TokenParam
 	}
 	return s
 }
 
 func isParamKey(s string) bool {
-	return string(s[0]) == ":"
+	return string(s[0]) == TokenParam
+}
+
+func isWildcardKey(s string) bool {
+	return string(s[0]) == TokenWildcard
 }
 
 func (n *Node) getChild(key string) (*Node, bool) {
@@ -177,6 +182,11 @@ func (n *Node) getChild(key string) (*Node, bool) {
 		return childParam, true
 	}
 
+	// search wildcard node
+	if childWild, ok := n.getChildWild(); ok {
+		return childWild, true
+	}
+
 	return nil, false
 }
 
@@ -190,6 +200,21 @@ func (n *Node) getChildParam() (*Node, bool) {
 		return child, true
 	}
 	if bros, ok := child.getBrosParam(); ok {
+		return bros, true
+	}
+	return nil, false
+}
+
+func (n *Node) getChildWild() (*Node, bool) {
+	if n.child == nil {
+		return nil, false
+	}
+
+	child := n.child
+	if isWildcardKey(child.data.key) {
+		return child, true
+	}
+	if bros, ok := child.getBrosWild(); ok {
 		return bros, true
 	}
 	return nil, false
@@ -219,9 +244,25 @@ func (n *Node) getBrosParam() (*Node, bool) {
 	return bros.getBrosParam()
 }
 
+func (n *Node) getBrosWild() (*Node, bool) {
+	if n.bros == nil {
+		return nil, false
+	}
+
+	bros := n.bros
+	if isWildcardKey(bros.data.key) {
+		return bros, true
+	}
+	return bros.getBrosWild()
+}
+
 func (n *Node) setChild(node Node) (*Node, error) {
 	if _, ok := n.getChild(node.data.key); ok {
 		return nil, ErrAlreadyPathRegistered
+	}
+
+	if isWildcardKey(n.data.key) {
+		return nil, ErrAlreadyWildcardPathRegistered
 	}
 
 	if n.child == nil {
@@ -251,10 +292,15 @@ func (n *Node) pathEqual(path string) bool {
 	if err != nil {
 		return false
 	}
-	if len(a) != len(b) {
+	if len(a) != len(b) && !strings.Contains(n.data.path, TokenWildcard) {
 		return false
 	}
 	for i, v := range a {
+		// wildcard matches all paths
+		if len(v) != 0 && isWildcardKey(v) {
+			return true
+		}
+
 		// param symbol is match any
 		if len(v) != 0 && isParamKey(v) {
 			continue
@@ -279,13 +325,17 @@ func (n *Node) exportParam(path string) []interface{} {
 	if err != nil {
 		return p
 	}
-	if len(a) != len(b) {
+	if len(a) != len(b) && !strings.Contains(n.data.path, TokenWildcard) {
 		return p
 	}
 
 	for i, v := range a {
 		if len(v) != 0 && isParamKey(v) {
 			p = append(p, b[i])
+		}
+		// convert the path following TokenWildcard to parameters
+		if len(v) != 0 && isWildcardKey(v) {
+			p = append(p, strings.Join(b[i:], "/"))
 		}
 	}
 	return p

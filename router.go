@@ -9,6 +9,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	// TokenParam represents parameter in the URL path
+	// e.g. "/user/:id"
+	TokenParam = ":"
+
+	// TokenParam represents wildcard in the URL path
+	// e.g. "/static/*filepath
+	TokenWildcard = "*"
+)
+
 var (
 	ErrNotFoundHandler = errors.New("not found matched handler")
 	ErrInvalidHandler  = errors.New("invalid handler")
@@ -115,6 +125,14 @@ func (r *Router) HandleFunc(method, path string, h baseHandler) *Route {
 		log.Printf("failed registered path. %v", err)
 	}
 	return route
+}
+
+func (r *Router) ServeFile(path string, root http.FileSystem) {
+	fs := http.FileServer(root)
+	r.Get(path, func(w http.ResponseWriter, req *http.Request, suffixPath string) {
+		req.URL.Path = suffixPath
+		fs.ServeHTTP(w, req)
+	})
 }
 
 func (r *Router) AddRoute() *Route {

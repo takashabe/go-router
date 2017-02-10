@@ -266,10 +266,10 @@ func TestHandleFuncWithMethod(t *testing.T) {
 		}
 		client := &http.Client{}
 		res, err := client.Do(req)
-		defer res.Body.Close()
 		if err != nil {
 			t.Errorf("want no error, got %v", err)
 		}
+		defer res.Body.Close()
 		if body, _ := ioutil.ReadAll(res.Body); c.method != string(body) && string(body) != "" {
 			t.Errorf("#%d: want body:%s, got body:%s", i, c.method, string(body))
 		}
@@ -287,5 +287,61 @@ func TestServeHTTPWithPost(t *testing.T) {
 	)
 	if err != nil {
 		t.Errorf("%v", err)
+	}
+}
+
+func TestServeFile(t *testing.T) {
+	cases := []struct {
+		definePath string
+		defineRoot http.FileSystem
+		input      string
+		expectCode int
+		expectBody string // see "/testdata/*"
+	}{
+		{
+			"/testdata/*filepath",
+			http.Dir("testdata"),
+			"/testdata/foo",
+			200,
+			"hello from testdata/foo\n",
+		},
+		{
+			"/testdata/dir/*filepath",
+			http.Dir("testdata"),
+			"/testdata/dir/dir/bar",
+			200,
+			"hello from testdata/dir/bar\n",
+		},
+		{
+			"/testdata/*filepath",
+			http.Dir("testdata"),
+			"/testdata/../router_test.go",
+			404,
+			"",
+		},
+	}
+	for i, c := range cases {
+		r := NewRouter()
+		r.ServeFile(c.definePath, c.defineRoot)
+		ts := httptest.NewServer(r)
+		defer ts.Close()
+
+		res, err := http.Get(ts.URL + c.input)
+		if err != nil {
+			t.Errorf("#%d: want no error, got %v", i, err)
+		}
+		defer res.Body.Close()
+		if res.StatusCode != c.expectCode {
+			t.Errorf("#%d: want %d, got %d", i, c.expectCode, res.StatusCode)
+		}
+		if c.expectBody != "" {
+			body, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				t.Errorf("#%d: want no error, got %v", i, err)
+			}
+			if string(body) != c.expectBody {
+				t.Errorf("#%d: want %s, got %s", i, c.expectBody, string(body))
+			}
+		}
 	}
 }
