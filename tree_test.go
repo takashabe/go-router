@@ -20,12 +20,40 @@ var helperNodes map[string]*Node
 //		/user/:userID/follow
 //		/shop/:shopID/detail
 //		/shop/:shopID/:paymentID
+//		/static/css/*filepath
+//		/static/js/*filepath
 func setupFixture() {
 	fixtureTrie, helperNodes = generateFixture()
 }
 
 func generateFixture() (Trie, map[string]*Node) {
 	// defined the sample URL in reverse order
+	static3b := &Node{
+		data:  &Data{key: "*", path: "/static/js/*filepath", handler: nil},
+		bros:  nil,
+		child: nil,
+	}
+	static3a := &Node{
+		data:  &Data{key: "*", path: "/static/css/*filepath", handler: nil},
+		bros:  nil,
+		child: nil,
+	}
+	static2b := &Node{
+		data:  &Data{key: "js", handler: nil},
+		bros:  nil,
+		child: static3b,
+	}
+	static2a := &Node{
+		data:  &Data{key: "css", handler: nil},
+		bros:  static2b,
+		child: static3a,
+	}
+	static1a := &Node{
+		data:  &Data{key: "static", handler: nil},
+		bros:  nil,
+		child: static2a,
+	}
+
 	shop3b := &Node{
 		data:  &Data{key: ":", path: "/shop/:shopID/:paymentID", handler: nil},
 		bros:  nil,
@@ -43,7 +71,7 @@ func generateFixture() (Trie, map[string]*Node) {
 	}
 	shop1a := &Node{
 		data:  &Data{key: "shop"},
-		bros:  nil,
+		bros:  static1a,
 		child: shop2a,
 	}
 
@@ -79,6 +107,7 @@ func generateFixture() (Trie, map[string]*Node) {
 		"root":   root,
 		"user1a": user1a, "user2a": user2a, "user2b": user2b, "user3a": user3a,
 		"shop1a": shop1a, "shop2a": shop2a, "shop3a": shop3a, "shop3b": shop3b,
+		"static1a": static1a, "static2a": static2a, "static3a": static3a, "static3b": static3b,
 	}
 	return trie, nodes
 }
@@ -174,7 +203,7 @@ func TestGetLastBros(t *testing.T) {
 		start      *Node
 		expectNode *Node
 	}{
-		{helperNodes["user1a"], helperNodes["shop1a"]},
+		{helperNodes["user1a"], helperNodes["static1a"]},
 		{helperNodes["user3a"], helperNodes["user3a"]},
 	}
 	for i, c := range cases {
@@ -197,6 +226,9 @@ func TestSetChild(t *testing.T) {
 	expectTrie3, _ := generateFixture()
 	inputNode3 := Node{data: &Data{key: ":", path: "/user/:userID"}}
 
+	expectTrie4, _ := generateFixture()
+	inputNode4 := Node{data: &Data{key: "foo", path: "/static/css/*filepath/foo"}}
+
 	cases := []struct {
 		start       string
 		input       Node
@@ -206,6 +238,7 @@ func TestSetChild(t *testing.T) {
 		{"user2b", inputNode1, nil, expectTrie1},
 		{"shop3b", inputNode2, nil, expectTrie2},
 		{"user1a", inputNode3, ErrAlreadyPathRegistered, expectTrie3},
+		{"static3a", inputNode4, ErrAlreadyWildcardPathRegistered, expectTrie4},
 	}
 	for i, c := range cases {
 		setupFixture()
@@ -250,6 +283,16 @@ func TestPathEqual(t *testing.T) {
 			"/user/10/dummy/",
 			false,
 		},
+		{
+			&Node{data: &Data{path: "/static/css/*filepath"}},
+			"/static/css/foo",
+			true,
+		},
+		{
+			&Node{data: &Data{path: "/static/css/*filepath"}},
+			"/static/css/foo/bar",
+			true,
+		},
 	}
 	for i, c := range cases {
 		result := c.baseNode.pathEqual(c.input)
@@ -272,6 +315,7 @@ func TestFind(t *testing.T) {
 		{"/user/1/follow/none", "GET", nil, ErrPathNotFound},
 		{"/shop/1/detail", "POST", nil, ErrPathNotFound},
 		{"shop/1/detail", "GET", nil, ErrInvalidPathFormat},
+		{"/static/css/foo/bar", "GET", helperNodes["static3a"], nil},
 	}
 	for i, c := range cases {
 		result, err := fixtureTrie.find(c.inputPath, c.inputMethod)
@@ -362,6 +406,11 @@ func TestExportParam(t *testing.T) {
 			&Node{data: &Data{}},
 			"/user/10/follow/10",
 			[]interface{}{},
+		},
+		{
+			&Node{data: &Data{path: "/static/css/*filepath"}},
+			"/static/css/foo/bar",
+			[]interface{}{"foo/bar"},
 		},
 	}
 	for i, c := range cases {

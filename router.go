@@ -9,6 +9,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	// TokenParam represents parameter in the URL path
+	// e.g. "/user/:id"
+	TokenParam = ":"
+
+	// TokenParam represents wildcard in the URL path
+	// e.g. "/static/*filepath
+	TokenWildcard = "*"
+)
+
 var (
 	ErrNotFoundHandler = errors.New("not found matched handler")
 	ErrInvalidHandler  = errors.New("invalid handler")
