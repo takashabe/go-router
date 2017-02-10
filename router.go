@@ -127,6 +127,14 @@ func (r *Router) HandleFunc(method, path string, h baseHandler) *Route {
 	return route
 }
 
+func (r *Router) ServeFile(path string, root http.FileSystem) {
+	fs := http.FileServer(root)
+	r.Get(path, func(w http.ResponseWriter, req *http.Request, suffixPath string) {
+		req.URL.Path = suffixPath
+		fs.ServeHTTP(w, req)
+	})
+}
+
 func (r *Router) AddRoute() *Route {
 	route := &Route{}
 	r.routes = append(r.routes, route)
