@@ -319,6 +319,13 @@ func TestServeFile(t *testing.T) {
 			404,
 			"",
 		},
+		{
+			"/foo/*filepath",
+			http.Dir("testdata"),
+			"/foo/foo",
+			200,
+			"hello from testdata/foo\n",
+		},
 	}
 	for i, c := range cases {
 		r := NewRouter()
