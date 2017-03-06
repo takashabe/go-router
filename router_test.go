@@ -61,7 +61,8 @@ func TestParseParams(t *testing.T) {
 	for i, c := range cases {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/", nil)
-		result, err := parseParams(w, r, c.input)
+		router := NewRouter()
+		result, err := router.parseParams(w, r, c.input)
 		if errors.Cause(err) != c.expectError {
 			t.Errorf("#%d: want error:%#v , got error:%#v ", i, c.expectError, err)
 		}
@@ -103,7 +104,8 @@ func TestCallHandler(t *testing.T) {
 	for i, c := range cases {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/", nil)
-		err := callHandler(w, r, c.input)
+		router := NewRouter()
+		err := router.callHandler(w, r, c.input)
 		if errors.Cause(err) != c.expect {
 			t.Errorf("#%d: want error:%#v , got error:%#v ", i, c.expect, err)
 		}

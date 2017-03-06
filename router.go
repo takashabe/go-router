@@ -3,8 +3,10 @@ package router
 import (
 	"log"
 	"net/http"
+	"os"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -41,46 +43,64 @@ type Router struct {
 	NotFoundHandler http.Handler
 	Routing         Routing
 	routes          []*Route
+	OutLog          *log.Logger
+	ErrLog          *log.Logger
 }
 
 func NewRouter() *Router {
 	return &Router{
 		NotFoundHandler: http.NotFoundHandler(),
 		Routing:         NewTrie(),
+		OutLog:          log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile),
+		ErrLog:          log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile),
+	}
+}
+
+func (r *Router) accessLogf(format string, args ...interface{}) {
+	if env := os.Getenv("GO_ROUTER_ENABLE_LOGGING"); len(env) != 0 {
+		r.OutLog.Printf("%s\n", args)
+	}
+}
+
+func (r *Router) errorLogf(format string, args ...interface{}) {
+	if env := os.Getenv("GO_ROUTER_ENABLE_LOGGING"); len(env) != 0 {
+		r.ErrLog.Printf("[error] %s\n", args)
 	}
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	hd, err := r.Routing.Lookup(req.URL.Path, req.Method)
 	if err != nil {
-		log.Printf("%v\n", err)
+		r.errorLogf("not found path: %s. %#v", req.URL.Path, err)
 		r.NotFoundHandler.ServeHTTP(w, req)
 		return
 	}
 
-	err = callHandler(w, req, hd)
+	err = r.callHandler(w, req, hd)
 	if err != nil {
-		log.Printf("%v\n", err)
+		r.errorLogf("failed call handler. %#v", err)
 		r.NotFoundHandler.ServeHTTP(w, req)
 		return
 	}
 }
 
-func callHandler(w http.ResponseWriter, req *http.Request, hd HandlerData) error {
+func (r *Router) callHandler(w http.ResponseWriter, req *http.Request, hd HandlerData) error {
 	ref := reflect.ValueOf(hd.handler)
 	if ref.Kind() != reflect.Func {
 		return errors.Wrapf(ErrInvalidHandler, "handler is must be Func. got:%v", ref.Kind())
 	}
-	args, err := parseParams(w, req, hd)
+	args, err := r.parseParams(w, req, hd)
 	if err != nil {
 		return errors.Wrapf(err, "failed parsed params")
 	}
+
+	r.accessLogf("%s - - [%s] \"%s %s %s\"", req.RemoteAddr, time.Now().Format(time.RFC822Z), req.Method, req.URL.Path, req.Proto)
 	ref.Call(args)
 	return nil
 }
 
 // params convert to []reflect.Value
-func parseParams(w http.ResponseWriter, req *http.Request, hd HandlerData) ([]reflect.Value, error) {
+func (r *Router) parseParams(w http.ResponseWriter, req *http.Request, hd HandlerData) ([]reflect.Value, error) {
 	// static args means http.ResponseWriter and *http.Request
 	numStaticArgs := 2
 
@@ -100,7 +120,7 @@ func parseParams(w http.ResponseWriter, req *http.Request, hd HandlerData) ([]re
 		case reflect.Int:
 			p, err := strconv.Atoi(hd.params[i-numStaticArgs].(string))
 			if err != nil {
-				return nil, errors.Wrapf(ErrInvalidParam, "%s", err)
+				return nil, errors.Wrapf(ErrInvalidParam, "path=%s, error=%s", req.URL.Path, err)
 			}
 			args = append(args, reflect.ValueOf(p))
 		default:
@@ -122,7 +142,7 @@ func (r *Router) HandleFunc(method, path string, h baseHandler) *Route {
 	route := r.AddRoute().HandleFunc(method, path, h)
 	err := r.Routing.Insert(route.method, route.path, route.handler)
 	if err != nil {
-		log.Printf("failed registered path. %v", err)
+		r.errorLogf("failed registered path. path=%s, error=%v", path, err)
 	}
 	return route
 }

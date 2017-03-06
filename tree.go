@@ -105,7 +105,7 @@ func (t *Trie) Insert(method, path string, handler baseHandler) error {
 					n.data.handler = handler
 					return nil
 				}
-				return ErrAlreadyPathRegistered
+				return errors.Wrapf(ErrAlreadyPathRegistered, "method=%s, path=%s", method, path)
 			}
 			dst = n
 			continue
