@@ -47,28 +47,40 @@ type Router struct {
 	NotFoundHandler http.Handler
 	Routing         Routing
 	routes          []*Route
-	OutLog          *log.Logger
-	ErrLog          *log.Logger
+	outLog          *log.Logger
+	errLog          *log.Logger
 }
 
 func NewRouter() *Router {
 	return &Router{
 		NotFoundHandler: http.NotFoundHandler(),
 		Routing:         NewTrie(),
-		OutLog:          log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile),
-		ErrLog:          log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile),
+		outLog:          newLogger(os.Stdout),
+		errLog:          newLogger(os.Stderr),
 	}
+}
+
+func newLogger(w io.Writer) *log.Logger {
+	return log.New(w, "", log.LstdFlags|log.Lshortfile)
+}
+
+func (r *Router) SetOutLogger(w io.Writer) {
+	r.outLog = newLogger(w)
+}
+
+func (r *Router) SetErrLogger(w io.Writer) {
+	r.errLog = newLogger(w)
 }
 
 func (r *Router) accessLogf(format string, args ...interface{}) {
 	if env := os.Getenv("GO_ROUTER_ENABLE_LOGGING"); len(env) != 0 {
-		r.OutLog.Printf("%s\n", args)
+		r.outLog.Printf("%s\n", args)
 	}
 }
 
 func (r *Router) errorLogf(format string, args ...interface{}) {
 	if env := os.Getenv("GO_ROUTER_ENABLE_LOGGING"); len(env) != 0 {
-		r.ErrLog.Printf("[error] %s\n", args)
+		r.errLog.Printf("[error] %s\n", args)
 	}
 }
 
