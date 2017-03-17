@@ -1,12 +1,14 @@
 package router
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -352,5 +354,21 @@ func TestServeFile(t *testing.T) {
 				t.Errorf("#%d: want %s, got %s", i, c.expectBody, string(body))
 			}
 		}
+	}
+}
+
+func TestPrintRoutes(t *testing.T) {
+	router := NewRouter()
+	router.Get("/", dummyHandler)
+	router.Get("/bar/:id/:id", func(w http.ResponseWriter, r *http.Request, a, b int) {})
+	router.Post("/", dummyHandler)
+
+	var buf bytes.Buffer
+	router.PrintRoutes(&buf)
+	want := `[GET] "/" -> github.com/takashabe/go-router.dummyHandler
+[GET] "/bar/:id/:id" -> github.com/takashabe/go-router.TestPrintRoutes.func1
+[POST] "/" -> github.com/takashabe/go-router.dummyHandler`
+	if strings.TrimSpace(buf.String()) != want {
+		t.Errorf("want:\n%s\ngot:\n%s", want, buf.String())
 	}
 }

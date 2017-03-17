@@ -1,10 +1,14 @@
 package router
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"reflect"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -159,4 +163,16 @@ func (r *Router) AddRoute() *Route {
 	route := &Route{}
 	r.routes = append(r.routes, route)
 	return route
+}
+
+func (r *Router) PrintRoutes(w io.Writer) {
+	routes := r.routes
+	list := new(bytes.Buffer)
+	for _, route := range routes {
+		ref := reflect.ValueOf(route.handler)
+		method := runtime.FuncForPC(ref.Pointer()).Name()
+		list.WriteString(fmt.Sprintf("[%s] \"%s\" -> %s\n",
+			route.method, route.path, method))
+	}
+	fmt.Fprintln(w, list)
 }
