@@ -1,5 +1,6 @@
 package router
 
+// Route is represented one URL pass route
 type Route struct {
 	// called on request(ServeHTTP). behavior like http.handler
 	method  string
@@ -7,6 +8,7 @@ type Route struct {
 	handler baseHandler
 }
 
+// HandleFunc register handler to route
 func (r *Route) HandleFunc(method, path string, h baseHandler) *Route {
 	r.method = method
 	r.path = path

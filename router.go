@@ -25,17 +25,20 @@ const (
 	TokenWildcard = "*"
 )
 
+// Errors
 var (
 	ErrNotFoundHandler = errors.New("not found matched handler")
 	ErrInvalidHandler  = errors.New("invalid handler")
 	ErrInvalidParam    = errors.New("invalid param")
 )
 
+// Routing is represents routing tree
 type Routing interface {
 	Lookup(method, path string) (HandlerData, error)
 	Insert(method, path string, handler baseHandler) error
 }
 
+// HandlerData is represents handler function and args
 type HandlerData struct {
 	handler baseHandler
 	params  []interface{}
@@ -43,6 +46,7 @@ type HandlerData struct {
 
 type baseHandler interface{}
 
+// Router is represents routing algorism and routes
 type Router struct {
 	NotFoundHandler http.Handler
 	Routing         Routing
@@ -51,6 +55,7 @@ type Router struct {
 	errLog          *log.Logger
 }
 
+// NewRouter return created Router
 func NewRouter() *Router {
 	return &Router{
 		NotFoundHandler: http.NotFoundHandler(),
@@ -64,10 +69,12 @@ func newLogger(w io.Writer) *log.Logger {
 	return log.New(w, "", log.LstdFlags|log.Lshortfile)
 }
 
+// SetOutLogger setting normal logger
 func (r *Router) SetOutLogger(w io.Writer) {
 	r.outLog = newLogger(w)
 }
 
+// SetErrLogger setting error logger
 func (r *Router) SetErrLogger(w io.Writer) {
 	r.errLog = newLogger(w)
 }
@@ -146,14 +153,28 @@ func (r *Router) parseParams(w http.ResponseWriter, req *http.Request, hd Handle
 	return args, nil
 }
 
-func (r *Router) Get(path string, h baseHandler) *Route     { return r.HandleFunc("GET", path, h) }
-func (r *Router) Head(path string, h baseHandler) *Route    { return r.HandleFunc("HEAD", path, h) }
-func (r *Router) Post(path string, h baseHandler) *Route    { return r.HandleFunc("POST", path, h) }
-func (r *Router) Put(path string, h baseHandler) *Route     { return r.HandleFunc("PUT", path, h) }
-func (r *Router) Patch(path string, h baseHandler) *Route   { return r.HandleFunc("PATCH", path, h) }
-func (r *Router) Delete(path string, h baseHandler) *Route  { return r.HandleFunc("DELETE", path, h) }
+// Get register handler via GET
+func (r *Router) Get(path string, h baseHandler) *Route { return r.HandleFunc("GET", path, h) }
+
+// Head register handler via HEAD
+func (r *Router) Head(path string, h baseHandler) *Route { return r.HandleFunc("HEAD", path, h) }
+
+// Post register handler via POST
+func (r *Router) Post(path string, h baseHandler) *Route { return r.HandleFunc("POST", path, h) }
+
+// Put register handler via PUT
+func (r *Router) Put(path string, h baseHandler) *Route { return r.HandleFunc("PUT", path, h) }
+
+// Patch register handler via PATCH
+func (r *Router) Patch(path string, h baseHandler) *Route { return r.HandleFunc("PATCH", path, h) }
+
+// Delete register handler via DELETE
+func (r *Router) Delete(path string, h baseHandler) *Route { return r.HandleFunc("DELETE", path, h) }
+
+// Options register handler via OPTIONS
 func (r *Router) Options(path string, h baseHandler) *Route { return r.HandleFunc("OPTIONS", path, h) }
 
+// HandleFunc register handler each HTTP method
 func (r *Router) HandleFunc(method, path string, h baseHandler) *Route {
 	route := r.AddRoute().HandleFunc(method, path, h)
 	err := r.Routing.Insert(route.method, route.path, route.handler)
@@ -163,6 +184,7 @@ func (r *Router) HandleFunc(method, path string, h baseHandler) *Route {
 	return route
 }
 
+// ServeFile register handler for static files
 func (r *Router) ServeFile(path string, root http.FileSystem) {
 	fs := http.FileServer(root)
 	r.Get(path, func(w http.ResponseWriter, req *http.Request, suffixPath string) {
@@ -171,12 +193,14 @@ func (r *Router) ServeFile(path string, root http.FileSystem) {
 	})
 }
 
+// AddRoute add route in router
 func (r *Router) AddRoute() *Route {
 	route := &Route{}
 	r.routes = append(r.routes, route)
 	return route
 }
 
+// PrintRoutes display all registered routes
 func (r *Router) PrintRoutes(w io.Writer) {
 	routes := r.routes
 	list := new(bytes.Buffer)

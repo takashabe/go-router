@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// errors used by tree
 var (
 	ErrPathNotFound                  = errors.New("path not found")
 	ErrInvalidPathFormat             = errors.New("invalid path format")
@@ -13,16 +14,19 @@ var (
 	ErrAlreadyWildcardPathRegistered = errors.New("already wildcard path registered")
 )
 
+// Trie is implemente Routing via Trie algorithm
 type Trie struct {
 	root map[string]*Node
 }
 
+// Node is represent node in Trie tree
 type Node struct {
 	data  *Data
 	bros  *Node
 	child *Node
 }
 
+// Data is represented node have data
 type Data struct {
 	// tree node key
 	key string
@@ -31,12 +35,14 @@ type Data struct {
 	handler baseHandler
 }
 
+// NewTrie return initialized Trie struct
 func NewTrie() *Trie {
 	// cap num refers to: net/http/method.go
 	// without "CONNECT", "TRACE"
 	return &Trie{root: make(map[string]*Node, 7)}
 }
 
+// Lookup returns a HandlerData matching path and method
 func (t *Trie) Lookup(path string, method string) (HandlerData, error) {
 	n, err := t.find(path, method)
 	if err != nil {
@@ -71,6 +77,7 @@ func (t *Trie) find(path string, method string) (*Node, error) {
 	return nil, ErrPathNotFound
 }
 
+// Insert registered new node
 func (t *Trie) Insert(method, path string, handler baseHandler) error {
 	parts, err := generateSplitPath(path)
 	if err != nil {
