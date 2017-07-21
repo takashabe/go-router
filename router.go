@@ -20,7 +20,7 @@ const (
 	// e.g. "/user/:id"
 	TokenParam = ":"
 
-	// TokenParam represents wildcard in the URL path
+	// TokenWildcard represents wildcard in the URL path
 	// e.g. "/static/*filepath
 	TokenWildcard = "*"
 )
