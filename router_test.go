@@ -177,13 +177,13 @@ func TestServeHTTP(t *testing.T) {
 
 		client := &http.Client{}
 		res, err := client.Do(req)
-		defer res.Body.Close()
 		if err != nil {
 			t.Errorf("want no error, got %v", err)
 		}
+		defer res.Body.Close()
 
 		if res.StatusCode != c.expectStatus {
-			t.Errorf("#%d: want status code:%s, got status code:%s", i, c.expectStatus, res.StatusCode)
+			t.Errorf("#%d: want status code:%d, got status code:%d", i, c.expectStatus, res.StatusCode)
 		}
 		if body, _ := ioutil.ReadAll(res.Body); c.expectBody != string(body) {
 			t.Errorf("#%d: want body:%s, got body:%s", i, c.expectBody, string(body))
@@ -225,13 +225,13 @@ func TestServeHTTPWithMultiplePath(t *testing.T) {
 
 		client := &http.Client{}
 		res, err := client.Do(req)
-		defer res.Body.Close()
 		if err != nil {
 			t.Errorf("want no error, got %v", err)
 		}
+		defer res.Body.Close()
 
 		if res.StatusCode != c.expectStatus {
-			t.Errorf("#%d: want status code:%s, got status code:%s", i, c.expectStatus, res.StatusCode)
+			t.Errorf("#%d: want status code:%d, got status code:%d", i, c.expectStatus, res.StatusCode)
 		}
 	}
 }
