@@ -294,7 +294,7 @@ func TestServeHTTPWithPost(t *testing.T) {
 	}
 }
 
-func TestServeFile(t *testing.T) {
+func TestServeDir(t *testing.T) {
 	cases := []struct {
 		definePath string
 		defineRoot http.FileSystem
@@ -329,6 +329,55 @@ func TestServeFile(t *testing.T) {
 			"/foo/foo",
 			200,
 			"hello from testdata/foo\n",
+		},
+	}
+	for i, c := range cases {
+		r := NewRouter()
+		r.ServeDir(c.definePath, c.defineRoot)
+		ts := httptest.NewServer(r)
+		defer ts.Close()
+
+		res, err := http.Get(ts.URL + c.input)
+		if err != nil {
+			t.Errorf("#%d: want no error, got %v", i, err)
+		}
+		defer res.Body.Close()
+		if res.StatusCode != c.expectCode {
+			t.Errorf("#%d: want %d, got %d", i, c.expectCode, res.StatusCode)
+		}
+		if c.expectBody != "" {
+			body, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				t.Errorf("#%d: want no error, got %v", i, err)
+			}
+			if string(body) != c.expectBody {
+				t.Errorf("#%d: want %s, got %s", i, c.expectBody, string(body))
+			}
+		}
+	}
+}
+
+func TestServeFile(t *testing.T) {
+	cases := []struct {
+		definePath string
+		defineRoot string
+		input      string
+		expectCode int
+		expectBody string // see "/testdata/*"
+	}{
+		{
+			"/",
+			"./testdata/foo",
+			"/",
+			200,
+			"hello from testdata/foo\n",
+		},
+		{
+			"/",
+			"./testdata/../testdata/foo",
+			"/",
+			400,
+			"",
 		},
 	}
 	for i, c := range cases {

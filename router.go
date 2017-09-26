@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -184,14 +185,39 @@ func (r *Router) HandleFunc(method, path string, h baseHandler) *Route {
 	return route
 }
 
-// ServeFile register handler for static files
-func (r *Router) ServeFile(path string, root http.FileSystem) {
+// ServeDir register handler for static directories
+func (r *Router) ServeDir(path string, root http.FileSystem) {
 	fs := http.FileServer(root)
 	r.Get(path, func(w http.ResponseWriter, req *http.Request, suffixPath string) {
 		req.URL.Path = suffixPath
 		fs.ServeHTTP(w, req)
 	})
 }
+
+// ServeFile register handler for static files
+func (r *Router) ServeFile(path string, file string) {
+	r.Get(path, func(w http.ResponseWriter, req *http.Request) {
+		if containsDotDot(file) {
+			http.Error(w, "invalid URL path", http.StatusBadRequest)
+			return
+		}
+		http.ServeFile(w, req, file)
+	})
+}
+
+func containsDotDot(v string) bool {
+	if !strings.Contains(v, "..") {
+		return false
+	}
+	for _, ent := range strings.FieldsFunc(v, isSlashRune) {
+		if ent == ".." {
+			return true
+		}
+	}
+	return false
+}
+
+func isSlashRune(r rune) bool { return r == '/' || r == '\\' }
 
 // AddRoute add route in router
 func (r *Router) AddRoute() *Route {
