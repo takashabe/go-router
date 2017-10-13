@@ -66,6 +66,12 @@ func (t *Trie) find(path string, method string) (*Node, error) {
 	}
 
 	for _, p := range parts {
+		// matched at first
+		if dst.pathEqual(path) {
+			return dst, nil
+		}
+
+		// check childs
 		if n, ok := dst.getChild(p); ok {
 			dst = n
 		}

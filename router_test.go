@@ -132,6 +132,14 @@ func TestServeHTTP(t *testing.T) {
 			200,
 		},
 		{
+			"/:id/:name",
+			dummyHandlerWithParams,
+			"GET",
+			"/10/hoge",
+			"id=10, name=hoge",
+			200,
+		},
+		{
 			"/dummy/:id/dummy/:name",
 			dummyHandlerWithParams,
 			"GET",
@@ -207,6 +215,24 @@ func TestServeHTTPWithMultiplePath(t *testing.T) {
 			},
 			"GET",
 			"/dummy/",
+			200,
+		},
+		{
+			[]*Route{
+				&Route{method: "GET", path: "/", handler: dummyHandler},
+				&Route{method: "GET", path: "/:id", handler: func(w http.ResponseWriter, req *http.Request, id int) {}},
+			},
+			"GET",
+			"/",
+			200,
+		},
+		{
+			[]*Route{
+				&Route{method: "GET", path: "/user/", handler: dummyHandler},
+				&Route{method: "GET", path: "/user/:id", handler: func(w http.ResponseWriter, req *http.Request, id int) {}},
+			},
+			"GET",
+			"/user/10",
 			200,
 		},
 	}
