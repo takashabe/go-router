@@ -68,16 +68,18 @@ func TestParseParams(t *testing.T) {
 		if errors.Cause(err) != c.expectError {
 			t.Errorf("#%d: want error:%#v , got error:%#v ", i, c.expectError, err)
 		}
-		if err == nil {
-			// complement a missing variable
-			c.expectValues = append(c.expectValues, reflect.ValueOf(w))
-			c.expectValues = append(c.expectValues, reflect.ValueOf(r))
-			// compare to params
-			result = result[2:]
-			for vi := 0; vi < len(result); vi++ {
-				if result[vi].Interface() != c.expectValues[vi].Interface() {
-					t.Errorf("#%d-%d: want result:%#v , got result:%#v ", i, vi, c.expectValues, result)
-				}
+		if err != nil {
+			continue
+		}
+
+		// complement a missing variable
+		c.expectValues = append(c.expectValues, reflect.ValueOf(w))
+		c.expectValues = append(c.expectValues, reflect.ValueOf(r))
+		// compare to params
+		result = result[2:]
+		for vi := 0; vi < len(result); vi++ {
+			if result[vi].Interface() != c.expectValues[vi].Interface() {
+				t.Errorf("#%d-%d: want result:%#v , got result:%#v ", i, vi, c.expectValues, result)
 			}
 		}
 	}
