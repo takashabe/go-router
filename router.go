@@ -45,6 +45,11 @@ type HandlerData struct {
 	params  []interface{}
 }
 
+// ValidationParam is customize validation parameter for the baseHandler
+type ValidationParam interface {
+	Validate(raw string) bool
+}
+
 type baseHandler interface{}
 
 // Router is represents routing algorism and routes
@@ -140,13 +145,22 @@ func (r *Router) parseParams(w http.ResponseWriter, req *http.Request, hd Handle
 	}
 	// dynamic args
 	for i := numStaticArgs; i < ref.NumIn(); i++ {
-		switch ref.In(i).Kind() {
+		t := ref.In(i)
+		switch t.Kind() {
 		case reflect.Int:
 			p, err := strconv.Atoi(hd.params[i-numStaticArgs].(string))
 			if err != nil {
 				return nil, errors.Wrapf(ErrInvalidParam, "path=%s, error=%s", req.URL.Path, err)
 			}
 			args = append(args, reflect.ValueOf(p))
+		case reflect.Struct:
+			v, ok := reflect.New(t).Interface().(ValidationParam)
+			if !ok {
+				return nil, errors.Wrapf(ErrInvalidParam, "Struct parameters only allow ValidationParam, path=%s", req.URL.Path)
+			}
+			if !v.Validate(hd.params[i-numStaticArgs].(string)) {
+				return nil, errors.Wrapf(ErrInvalidParam, "Failed to validation, path=%s", req.URL.Path)
+			}
 		default:
 			args = append(args, reflect.ValueOf(hd.params[i-numStaticArgs]))
 		}

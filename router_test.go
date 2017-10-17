@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -22,6 +23,13 @@ func dummyHandlerWithParams(w http.ResponseWriter, req *http.Request, id int, na
 	fmt.Fprintf(w, "id=%d, name=%s", id, name)
 }
 
+type dummyValidationParam struct{}
+
+func (v *dummyValidationParam) Validate(raw string) bool {
+	// allowed int value with 3 digit
+	return regexp.MustCompile(`\A[0-9]{3}\z`).MatchString(raw)
+}
+
 // for debug
 func printValues(vs []reflect.Value) {
 	for _, v := range vs {
@@ -30,6 +38,8 @@ func printValues(vs []reflect.Value) {
 }
 
 func TestParseParams(t *testing.T) {
+	type invalidValidationParam struct{}
+
 	cases := []struct {
 		input        HandlerData
 		expectValues []reflect.Value
@@ -57,6 +67,22 @@ func TestParseParams(t *testing.T) {
 				params:  []interface{}{"hoge", "name"},
 			},
 			[]reflect.Value{reflect.ValueOf(10), reflect.ValueOf("name")},
+			ErrInvalidParam,
+		},
+		{
+			HandlerData{
+				handler: func(w http.ResponseWriter, req *http.Request, v dummyValidationParam) {},
+				params:  []interface{}{"100"},
+			},
+			[]reflect.Value{reflect.ValueOf("100")},
+			nil,
+		},
+		{
+			HandlerData{
+				handler: func(w http.ResponseWriter, req *http.Request, v invalidValidationParam) {},
+				params:  []interface{}{"100"},
+			},
+			nil,
 			ErrInvalidParam,
 		},
 	}
