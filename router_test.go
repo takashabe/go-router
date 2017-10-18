@@ -30,6 +30,10 @@ func (v *dummyValidationParam) Validate(raw string) bool {
 	return regexp.MustCompile(`\A[0-9]{3}\z`).MatchString(raw)
 }
 
+func dummyHandlerWithValidationParams(w http.ResponseWriter, req *http.Request, v dummyValidationParam) {
+	fmt.Fprint(w, "hello, world")
+}
+
 // for debug
 func printValues(vs []reflect.Value) {
 	for _, v := range vs {
@@ -71,10 +75,18 @@ func TestParseParams(t *testing.T) {
 		},
 		{
 			HandlerData{
-				handler: func(w http.ResponseWriter, req *http.Request, v dummyValidationParam) {},
+				handler: dummyHandlerWithValidationParams,
 				params:  []interface{}{"100"},
 			},
-			[]reflect.Value{reflect.ValueOf("100")},
+			[]reflect.Value{reflect.ValueOf(&dummyValidationParam{})},
+			nil,
+		},
+		{
+			HandlerData{
+				handler: func(w http.ResponseWriter, req *http.Request, v dummyValidationParam, id int) {},
+				params:  []interface{}{"100", "10"},
+			},
+			[]reflect.Value{reflect.ValueOf(&dummyValidationParam{}), reflect.ValueOf(10)},
 			nil,
 		},
 		{
@@ -104,8 +116,17 @@ func TestParseParams(t *testing.T) {
 		// compare to params
 		result = result[2:]
 		for vi := 0; vi < len(result); vi++ {
-			if result[vi].Interface() != c.expectValues[vi].Interface() {
-				t.Errorf("#%d-%d: want result:%#v , got result:%#v ", i, vi, c.expectValues, result)
+			value := c.expectValues[vi].Interface()
+			fmt.Println(reflect.TypeOf(value))
+			switch value.(type) {
+			case ValidationParam:
+				if _, ok := result[vi].Interface().(ValidationParam); !ok {
+					t.Errorf("#%d-%d: want matched ValidationParam", i, vi)
+				}
+			default:
+				if result[vi].Interface() != value {
+					t.Errorf("#%d-%d: want result:%#v , got result:%#v ", i, vi, c.expectValues, result)
+				}
 			}
 		}
 	}
