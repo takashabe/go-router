@@ -58,7 +58,7 @@ func TestParseParams(t *testing.T) {
 				handler: dummyHandlerWithParams,
 				params:  []interface{}{"10"},
 			},
-			[]reflect.Value{reflect.ValueOf(10), reflect.ValueOf("name")},
+			nil,
 			ErrNotFoundHandler,
 		},
 		{
@@ -66,7 +66,7 @@ func TestParseParams(t *testing.T) {
 				handler: dummyHandlerWithParams,
 				params:  []interface{}{"hoge", "name"},
 			},
-			[]reflect.Value{reflect.ValueOf(10), reflect.ValueOf("name")},
+			nil,
 			ErrInvalidParam,
 		},
 		{
