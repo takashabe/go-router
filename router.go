@@ -162,6 +162,7 @@ func (r *Router) parseParams(w http.ResponseWriter, req *http.Request, hd Handle
 			if !v.Validate(hd.params[i-numStaticArgs].(string)) {
 				return nil, errors.Wrapf(ErrInvalidParam, "Failed to validation, path=%s", req.URL.Path)
 			}
+			args = append(args, reflect.ValueOf(v))
 		default:
 			args = append(args, reflect.ValueOf(param))
 		}
