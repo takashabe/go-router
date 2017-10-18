@@ -114,6 +114,9 @@ func TestParseParams(t *testing.T) {
 		c.expectValues = append(c.expectValues, reflect.ValueOf(w))
 		c.expectValues = append(c.expectValues, reflect.ValueOf(r))
 		// compare to params
+		if len(result) != len(c.expectValues) {
+			t.Fatalf("#%d: want number of params %d, got %d", i, len(c.expectValues), len(result))
+		}
 		result = result[2:]
 		for vi := 0; vi < len(result); vi++ {
 			value := c.expectValues[vi].Interface()
