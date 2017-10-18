@@ -145,10 +145,11 @@ func (r *Router) parseParams(w http.ResponseWriter, req *http.Request, hd Handle
 	}
 	// dynamic args
 	for i := numStaticArgs; i < ref.NumIn(); i++ {
+		param := hd.params[i-numStaticArgs]
 		t := ref.In(i)
 		switch t.Kind() {
 		case reflect.Int:
-			p, err := strconv.Atoi(hd.params[i-numStaticArgs].(string))
+			p, err := strconv.Atoi(param.(string))
 			if err != nil {
 				return nil, errors.Wrapf(ErrInvalidParam, "path=%s, error=%s", req.URL.Path, err)
 			}
@@ -162,7 +163,7 @@ func (r *Router) parseParams(w http.ResponseWriter, req *http.Request, hd Handle
 				return nil, errors.Wrapf(ErrInvalidParam, "Failed to validation, path=%s", req.URL.Path)
 			}
 		default:
-			args = append(args, reflect.ValueOf(hd.params[i-numStaticArgs]))
+			args = append(args, reflect.ValueOf(param))
 		}
 	}
 	return args, nil
