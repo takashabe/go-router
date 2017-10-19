@@ -23,15 +23,18 @@ func dummyHandlerWithParams(w http.ResponseWriter, req *http.Request, id int, na
 	fmt.Fprintf(w, "id=%d, name=%s", id, name)
 }
 
-type dummyValidationParam struct{}
+type dummyValidationParam struct {
+	raw string
+}
 
 func (v *dummyValidationParam) Validate(raw string) bool {
+	v.raw = raw
 	// allowed int value with 3 digit
 	return regexp.MustCompile(`\A[0-9]{3}\z`).MatchString(raw)
 }
 
-func dummyHandlerWithValidationParams(w http.ResponseWriter, req *http.Request, v dummyValidationParam) {
-	fmt.Fprint(w, "hello, world")
+func dummyHandlerWithValidationParams(w http.ResponseWriter, req *http.Request, v *dummyValidationParam) {
+	fmt.Fprintf(w, "raw=%s", v.raw)
 }
 
 // for debug
@@ -222,6 +225,32 @@ func TestServeHTTP(t *testing.T) {
 			"/dummy/notint",
 			"404 page not found\n", // http.NotFoundHandler used fmt.Fprintln()
 			404,
+		},
+		{
+			"/:id",
+			dummyHandlerWithValidationParams,
+			"GET",
+			"/100",
+			"raw=100",
+			200,
+		},
+		{
+			"/:id",
+			dummyHandlerWithValidationParams,
+			"GET",
+			"/1000",
+			"404 page not found\n", // http.NotFoundHandler used fmt.Fprintln()
+			404,
+		},
+		{
+			"/:id",
+			func(w http.ResponseWriter, req *http.Request, v *dummyValidationParam) {
+				fmt.Fprintf(w, "from ValidationParam with non-pointer")
+			},
+			"GET",
+			"/100",
+			"from ValidationParam with non-pointer",
+			200,
 		},
 	}
 	for i, c := range cases {
