@@ -83,7 +83,7 @@ func TestParseParams(t *testing.T) {
 		},
 		{
 			HandlerData{
-				handler: func(w http.ResponseWriter, req *http.Request, v dummyValidationParam, id int) {},
+				handler: func(w http.ResponseWriter, req *http.Request, v *dummyValidationParam, id int) {},
 				params:  []interface{}{"100", "10"},
 			},
 			[]reflect.Value{reflect.ValueOf(&dummyValidationParam{}), reflect.ValueOf(10)},
@@ -91,7 +91,7 @@ func TestParseParams(t *testing.T) {
 		},
 		{
 			HandlerData{
-				handler: func(w http.ResponseWriter, req *http.Request, v invalidValidationParam) {},
+				handler: func(w http.ResponseWriter, req *http.Request, v *invalidValidationParam) {},
 				params:  []interface{}{"100"},
 			},
 			nil,

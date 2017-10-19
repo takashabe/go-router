@@ -154,10 +154,10 @@ func (r *Router) parseParams(w http.ResponseWriter, req *http.Request, hd Handle
 				return nil, errors.Wrapf(ErrInvalidParam, "path=%s, error=%s", req.URL.Path, err)
 			}
 			args = append(args, reflect.ValueOf(p))
-		case reflect.Struct:
-			v, ok := reflect.New(t).Interface().(ValidationParam)
+		case reflect.Ptr:
+			v, ok := reflect.New(t.Elem()).Interface().(ValidationParam)
 			if !ok {
-				return nil, errors.Wrapf(ErrInvalidParam, "Struct parameters only allow ValidationParam, path=%s", req.URL.Path)
+				return nil, errors.Wrapf(ErrInvalidParam, "Validatable parameters only allow ValidationParam, path=%s", req.URL.Path)
 			}
 			if !v.Validate(hd.params[i-numStaticArgs].(string)) {
 				return nil, errors.Wrapf(ErrInvalidParam, "Failed to validation, path=%s", req.URL.Path)
