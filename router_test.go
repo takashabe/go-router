@@ -130,7 +130,7 @@ func TestParseParams(t *testing.T) {
 				}
 			default:
 				if result[vi].Interface() != value {
-					t.Errorf("#%d-%d: want result:%#v , got result:%#v ", i, vi, c.expectValues, result)
+					t.Errorf("#%d-%d: want result:%#v , got result:%#v ", i, vi, c.expectValues[vi], result[vi])
 				}
 			}
 		}
