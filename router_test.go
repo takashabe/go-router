@@ -123,7 +123,6 @@ func TestParseParams(t *testing.T) {
 		result = result[2:]
 		for vi := 0; vi < len(result); vi++ {
 			value := c.expectValues[vi].Interface()
-			fmt.Println(reflect.TypeOf(value))
 			switch value.(type) {
 			case ValidationParam:
 				if _, ok := result[vi].Interface().(ValidationParam); !ok {
