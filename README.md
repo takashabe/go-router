@@ -43,7 +43,7 @@ func main() {
 }
 ```
 
-For Static files:
+For static files:
 
 ```go
 func Routes() *router.Router {
