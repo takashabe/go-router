@@ -11,6 +11,7 @@ import (
 )
 
 // Allow3DigitNumber expect allow 3 digit number
+// Require implements router.ValidateParam
 type Allow3DigitNumber struct {
 	raw string
 }
