@@ -6,12 +6,8 @@ jobs:
 
     working_directory: /go/src/github.com/takashabe/go-router
 
-    environment:
-      TEST_RESULTS: /tmp/test-results
-
     steps:
       - checkout
-      - run: mkdir -p $TEST_RESULTS
 
       - run:
           name: Prepare
@@ -22,10 +18,3 @@ jobs:
       - run:
           name: Run unit tests
           command: make test | tee ${TEST_RESULTS}/go-test.out
-
-      - store_artifacts:
-          path: /tmp/test-results
-          destination: raw-test-output
-
-      - store_test_results:
-          path: /tmp/test-results
