@@ -17,4 +17,4 @@ jobs:
 
       - run:
           name: Run unit tests
-          command: make test | tee ${TEST_RESULTS}/go-test.out
+          command: make test
