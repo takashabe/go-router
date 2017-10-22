@@ -1,6 +1,6 @@
 # go-router
 
-[![CircleCI](https://circleci.com/gh/takashabe/go-router.svg?style=svg)](https://circleci.com/gh/takashabe/go-router)
+[![CircleCI](https://circleci.com/gh/takashabe/go-router.svg?style=shield&circle-token=f285e086eb9de5226c56b89e2ee35cac0498baa4)](https://circleci.com/gh/takashabe/go-router)
 
 Provide routing for HTTP request. It implemented `http.handler` interface, thereby easily introducing.
 Support URL path parameters and can be mapped to argument of handler method.
