@@ -316,6 +316,7 @@ func TestFind(t *testing.T) {
 		{"/shop/1/detail", "POST", nil, ErrPathNotFound},
 		{"shop/1/detail", "GET", nil, ErrInvalidPathFormat},
 		{"/static/css/foo/bar", "GET", helperNodes["static3a"], nil},
+		{"/user/1/follow?query=foo", "GET", helperNodes["user3a"], nil},
 	}
 	for i, c := range cases {
 		result, err := fixtureTrie.find(c.inputPath, c.inputMethod)

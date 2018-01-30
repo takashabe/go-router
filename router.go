@@ -24,6 +24,9 @@ const (
 	// TokenWildcard represents wildcard in the URL path
 	// e.g. "/static/*filepath
 	TokenWildcard = "*"
+
+	// TokenQueryString represents query string in the URL path
+	TokenQueryString = "?"
 )
 
 // Errors

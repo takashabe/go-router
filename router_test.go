@@ -251,6 +251,28 @@ func TestServeHTTP(t *testing.T) {
 			"from ValidationParam with non-pointer",
 			200,
 		},
+		{
+			"/:id",
+			func(w http.ResponseWriter, req *http.Request, v *dummyValidationParam) {
+				values := req.URL.Query()
+				fmt.Fprintf(w, values.Get("foo"))
+			},
+			"GET",
+			"/100?foo=bar",
+			"bar",
+			200,
+		},
+		{
+			"/:id",
+			func(w http.ResponseWriter, req *http.Request, v *dummyValidationParam) {
+				values := req.URL.Query()
+				fmt.Fprintf(w, values.Get("bar"))
+			},
+			"GET",
+			"/100?foo=bar&bar=foo",
+			"foo",
+			200,
+		},
 	}
 	for i, c := range cases {
 		r := NewRouter()

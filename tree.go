@@ -55,6 +55,7 @@ func (t *Trie) Lookup(path string, method string) (HandlerData, error) {
 }
 
 func (t *Trie) find(path string, method string) (*Node, error) {
+	path = trimQueryString(path)
 	parts, err := generateSplitPath(path)
 	if err != nil {
 		return nil, err
@@ -136,6 +137,14 @@ func (t *Trie) Insert(method, path string, handler baseHandler) error {
 		}
 	}
 	return nil
+}
+
+func trimQueryString(s string) string {
+	if len(s) == 0 {
+		return ""
+	}
+	ss := strings.Split(s, TokenQueryString)
+	return ss[0]
 }
 
 func generateSplitPath(s string) ([]string, error) {
